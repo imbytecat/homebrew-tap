@@ -31,9 +31,10 @@ class DoubaoImeBumper < CaskBumper::Bumper
 
   def validate_download(path)
     nested = format(NESTED_TEMPLATE, version: upstream.fetch(:version))
-    listing, status = Open3.capture2e("7z", "l", "-ba", path)
+    listing, status = Open3.capture2e("7z", "l", "-slt", path)
     abort "7z l failed:\n#{listing}" unless status.success?
-    abort "nested path missing from zip: #{nested}\n#{listing}" unless listing.include?(nested)
+    target = "Path = #{nested}"
+    abort "nested path missing from zip: #{nested}\n#{listing}" unless listing.lines.any? { |l| l.chomp == target }
   end
 end
 
