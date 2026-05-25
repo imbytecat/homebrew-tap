@@ -35,3 +35,15 @@ release.
 Intel x86 is intentionally not packaged here — Homebrew is winding down Intel
 support. Grab the Intel `.dmg` from <https://www.ugnas.com/download/> if you
 need it.
+
+## Repo setup (one-time)
+
+The weekly bump workflow needs permission to open PRs. In repository
+**Settings → Actions → General → Workflow permissions**, enable
+*Allow GitHub Actions to create and approve pull requests*. Or via `gh`:
+
+```sh
+gh api -X PUT repos/imbytecat/homebrew-tap/actions/permissions/workflow \
+  -F default_workflow_permissions=write \
+  -F can_approve_pull_request_reviews=true
+```
