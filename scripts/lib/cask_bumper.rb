@@ -46,7 +46,7 @@ module CaskBumper
     end
 
     def download_url
-      path = worker_path or raise NotImplementedError, "override #worker_path or #download_url"
+      path = worker_path || raise(NotImplementedError, "override #worker_path or #download_url")
       "#{WORKER_BASE}#{path}"
     end
 

@@ -17,7 +17,6 @@ cask "doubao-ime" do
   end
 
   depends_on macos: :catalina
-
   container nested: "DoubaoImeInstaller_v#{version}.app/Contents/Resources/DoubaoIme.zip"
 
   input_method "DoubaoIme.app"
