@@ -25,12 +25,14 @@ in production due to CAPTCHA.**
 | `worker/src/vendors/*.test.ts` | Vitest tests for each vendor's resolver. Plain node env, `fetch` mocked via `vi.spyOn`. Pool-Workers is not used — we only test pure resolve logic, not `caches.default`. |
 | `scripts/lib/cask_bumper.rb` | `CaskBumper::Bumper` base class. Subclasses override `#worker_path` and `#upstream` (returns `{ version:, md5: }`). Base handles HTTP, MD5 check, SHA256, cask file rewrite, `WORKER_BASE` constant. |
 | `scripts/bump-<name>.rb` | Thin subclass per cask. Detects upstream version via the cask's LIST endpoint (no CAPTCHA), exits if unchanged, downloads via the Worker, verifies upstream MD5, rewrites the cask. |
-| `.github/workflows/ci.yml` | macOS: `brew style --tap` + `brew audit --cask --online --tap`. Ubuntu: `rubocop scripts/` and worker `npm ci` + `typecheck` + `test`. Runs on push + PR. |
-| `.github/workflows/deploy-worker.yml` | `npm ci` → `typecheck` → `test` → `wrangler deploy` when `worker/**` changes on main. |
-| `.github/workflows/bump.yml` | Weekly + manual. `discover` job globs `scripts/bump-*.rb` into a matrix; `bump` job runs each in parallel, opens one PR per outdated cask. `workflow_dispatch` accepts an optional `cask` input to bump just one. |
+| `.github/workflows/ci.yml` | macOS: `brew style --cask imbytecat/tap` + `brew audit --cask --online --tap imbytecat/tap`. Ubuntu: `rubocop scripts/` and worker `npm ci` + `typecheck` + `test`. Runs on push + PR. |
+| `.github/workflows/deploy-worker.yml` | `npm ci` → `typecheck` → `test` → `wrangler deploy`. Triggers on push to `main` touching `worker/**` or the workflow file itself. |
+| `.github/workflows/bump.yml` | Weekly + manual. `discover` job uses `find scripts -name 'bump-*.rb' -printf '%f\n'` to build a matrix; `bump` job runs each in parallel, opens one PR per outdated cask. `workflow_dispatch` accepts an optional `cask` input to bump just one. |
 | `.github/dependabot.yml` | Weekly grouped updates for `github-actions` + worker `npm`. |
-| `flake.nix` | Dev shell: ruby_3_3 + rubocop, nodejs_22, just, curl, p7zip, libplist, jq. |
-| `Justfile` | `just bump <name>` / `worker-dev` / `worker-deploy` / `worker-typecheck` / `worker-test` / `style`. |
+| `flake.nix` | Dev shell: ruby_3_3 + rubocop, nodejs_22, just, curl, p7zip, libplist, jq, actionlint, shellcheck. |
+| `Justfile` | `set shell := ["bash", "-ceuo", "pipefail"]`. Recipes: `bump <name>` / `style` / `worker-dev` / `worker-deploy` / `worker-typecheck` / `worker-test`. |
+| `worker/wrangler.toml` | Pins `name = "homebrew-proxy"`, `main = "src/index.ts"`, `compatibility_date = "<recent>"`. Bump `compatibility_date` rather than dropping it. |
+| `.rubocop.yml` | `TargetRubyVersion: 3.3`, double-quote strings, `Layout/LineLength: 118`, `Style/Documentation: Enabled: false`, `scripts/**/*.rb` excluded from `Metrics/*` cops. |
 
 ## Cask invariants (the cop will catch you)
 
@@ -71,11 +73,9 @@ session hook will object otherwise.
 - Verifies upstream `md5` from LIST against the downloaded file before
   computing SHA256, *only if* the LIST endpoint exposes one. Subclass's
   `#upstream` returns `{ version:, md5: nil }` if no md5 is available.
-- Rewrites with `^\s*version\s+"…"` and `^\s*sha256\s+"…"` line-anchored
-  regexes (in `CaskBumper::Bumper#rewrite_cask`). The URL line contains
-  `#{version}` literally; the regex won't match it. If you ever add a
-  `version "…"` or `sha256 "…"`-shaped string inside a comment / multiline /
-  URL, that regex will misfire.
+- `CaskBumper::Bumper#rewrite_cask` uses line-anchored regexes
+  (`^\s*version\s+"…"` / `^\s*sha256\s+"…"`). The URL line contains
+  `#{version}` literally, so it's never matched.
 - Subclass MUST stay thin: only `worker_path` + `upstream` + per-vendor
   constants. If you reach for a shared HTTP helper, add it to the base.
 
@@ -200,3 +200,11 @@ the *what*.
   runtime to validate the pure resolver logic. If you ever want to test
   `redirectProxy` cache behavior end-to-end, add it then; not before.
 - **No per-cask bump workflow.** `bump.yml` is the only one.
+- **No `Gemfile` / `Gemfile.lock`.** Bumpers use Ruby stdlib only
+  (`net/http`, `json`, `digest`). RuboCop comes from the flake's
+  `ruby_3_3.withPackages`. If a future bumper needs a real gem, add
+  Gemfile + Gemfile.lock + update CI to `bundle install` first.
+- **No `opencode.json` / `.cursor*` / `CLAUDE.md` / `.github/copilot-instructions.md`.**
+  This file is the single source of agent context.
+- **No pre-commit / husky / lefthook.** CI is the only enforcement layer;
+  `.git/hooks/*.sample` are git's default templates, not installed.
