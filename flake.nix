@@ -25,6 +25,9 @@
             pkgs.just
             pkgs.curl
             pkgs.nodejs_22
+            pkgs.p7zip
+            pkgs.libplist
+            pkgs.jq
           ];
         };
 
