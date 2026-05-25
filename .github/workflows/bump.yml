@@ -1,0 +1,60 @@
+name: Bump casks
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      cask:
+        description: "Single cask to bump (leave empty for all)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      casks: ${{ steps.list.outputs.casks }}
+    steps:
+      - uses: actions/checkout@v6
+      - id: list
+        env:
+          INPUT_CASK: ${{ inputs.cask }}
+        run: |
+          set -euo pipefail
+          if [ -n "${INPUT_CASK}" ]; then
+            casks=$(jq -R -c -n --arg c "$INPUT_CASK" '[$c]')
+          else
+            casks=$(ls scripts/bump-*.rb 2>/dev/null \
+                    | sed -E 's|scripts/bump-(.+)\.rb|\1|' \
+                    | jq -R -s -c 'split("\n")|map(select(length>0))')
+          fi
+          echo "casks=${casks}" >> "$GITHUB_OUTPUT"
+
+  bump:
+    needs: discover
+    if: needs.discover.outputs.casks != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    strategy:
+      fail-fast: false
+      matrix:
+        cask: ${{ fromJSON(needs.discover.outputs.casks) }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+      - run: ruby scripts/bump-${{ matrix.cask }}.rb
+      - uses: peter-evans/create-pull-request@v8
+        with:
+          commit-message: "${{ matrix.cask }}: bump"
+          title: "${{ matrix.cask }}: bump"
+          branch: bot/bump-${{ matrix.cask }}
+          delete-branch: true
+          add-paths: Casks/${{ matrix.cask }}.rb
