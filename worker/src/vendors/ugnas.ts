@@ -6,7 +6,6 @@ const API_BASE = "https://api-zh.ugnas.com/api/system/v1/ua/temp/link";
 const ALLOWED_IDS = new Set(["515", "516", "514", "517", "502"]);
 
 interface UgnasResponse {
-  code?: number;
   msg?: string;
   data?: { linkData?: { tempUrl?: string } };
 }

@@ -3,13 +3,7 @@ import { ugnas } from "./vendors/ugnas";
 
 const app = new Hono();
 
-app.get("/", (c) =>
-  c.text(
-    "homebrew-proxy: signed-URL resolver for Homebrew taps.\n" +
-      "Routes:\n" +
-      "  GET /ugnas/dl?id=<appId>  -> 302 to UGREEN signed DMG URL\n",
-  ),
-);
+app.get("/", (c) => c.text("homebrew-proxy: https://github.com/imbytecat/homebrew-tap\n"));
 
 app.route("/ugnas", ugnas);
 
