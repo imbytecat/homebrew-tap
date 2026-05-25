@@ -10,9 +10,7 @@ module CaskBumper
   REPO_ROOT = File.expand_path("../..", __dir__).freeze
   WORKER_BASE = "https://homebrew-proxy.imbytecat.workers.dev"
 
-  # Base class for per-cask bumpers. Subclasses override:
-  #   * #worker_path   - path on the Worker that 302s to the signed download
-  #   * #upstream      - hash with :version and optional :md5 from the LIST endpoint
+  # Subclasses override #worker_path and #upstream (returns { version:, md5: }).
   class Bumper
     def initialize(name)
       @name = name
@@ -64,14 +62,8 @@ module CaskBumper
           abort "md5 mismatch: got #{actual}, expected #{expected_md5}" if actual != expected_md5
         end
 
-        sha256(dest)
+        Digest::SHA256.file(dest).hexdigest
       end
-    end
-
-    def sha256(path)
-      digest = Digest::SHA256.new
-      File.open(path, "rb") { |f| digest << f.read(1 << 16) until f.eof? }
-      digest.hexdigest
     end
 
     def rewrite_cask(version:, sha256:)
