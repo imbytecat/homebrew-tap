@@ -10,7 +10,9 @@ module CaskBumper
   REPO_ROOT = File.expand_path("../..", __dir__).freeze
   WORKER_BASE = "https://homebrew-proxy.imbytecat.workers.dev"
 
-  # Subclasses override #worker_path and #upstream (returns { version:, md5: }).
+  # Subclasses override #upstream (returns { version:, md5: }) plus either
+  # #worker_path (vendor requires CAPTCHA-proxied download) or #download_url
+  # (vendor exposes a public CDN URL that brew can hit directly).
   class Bumper
     def initialize(name)
       @name = name
@@ -36,7 +38,7 @@ module CaskBumper
     private
 
     def worker_path
-      raise NotImplementedError
+      nil
     end
 
     def upstream
@@ -44,7 +46,8 @@ module CaskBumper
     end
 
     def download_url
-      "#{WORKER_BASE}#{worker_path}"
+      path = worker_path or raise NotImplementedError, "override #worker_path or #download_url"
+      "#{WORKER_BASE}#{path}"
     end
 
     def current_cask_version
