@@ -28,6 +28,8 @@
             pkgs.p7zip
             pkgs.libplist
             pkgs.jq
+            pkgs.actionlint
+            pkgs.shellcheck
           ];
         };
 
