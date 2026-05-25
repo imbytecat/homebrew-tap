@@ -1,0 +1,29 @@
+AllCops:
+  TargetRubyVersion: 3.3
+  NewCops: enable
+  SuggestExtensions: false
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes
+
+Layout/LineLength:
+  Max: 118
+
+Metrics/AbcSize:
+  Exclude:
+    - "scripts/*.rb"
+
+Metrics/MethodLength:
+  Exclude:
+    - "scripts/*.rb"
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+    - "scripts/*.rb"
+
+Metrics/PerceivedComplexity:
+  Exclude:
+    - "scripts/*.rb"

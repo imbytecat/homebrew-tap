@@ -29,12 +29,12 @@ fetched from `api-zh.ugnas.com`. That endpoint enforces a sticky per-IP
 CAPTCHA, so a normal `brew install` from a home network gets blocked after
 a few requests.
 
-[`worker/`](worker/) holds a tiny Cloudflare Worker (`ugnas-proxy`) that
+[`worker/`](worker/) holds a tiny Cloudflare Worker (`homebrew-proxy`) that
 sits in front of the API: end users hit a stable
-`https://ugnas-proxy.<sub>.workers.dev/dl?id=515` URL, Cloudflare's edge IPs
-talk to UGREEN (and absorb the rate limit), and the Worker 302-redirects to
-the freshly-signed CDN URL. Signed URLs are cached for 5 min so multiple
-installs in a window share a single API call.
+`https://homebrew-proxy.<sub>.workers.dev/ugnas/dl?id=515` URL, Cloudflare's
+edge IPs talk to UGREEN (and absorb the rate limit), and the Worker
+302-redirects to the freshly-signed CDN URL. Signed URLs are cached for
+5 min so multiple installs in a window share a single API call.
 
 The cask points at the Worker URL with a pinned `sha256` of the published
 build; `scripts/bump-ugreen-nas.rb` refreshes the version + sha when upstream
