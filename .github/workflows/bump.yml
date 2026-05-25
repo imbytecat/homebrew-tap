@@ -28,8 +28,8 @@ jobs:
           if [ -n "${INPUT_CASK}" ]; then
             casks=$(jq -R -c -n --arg c "$INPUT_CASK" '[$c]')
           else
-            casks=$(ls scripts/bump-*.rb 2>/dev/null \
-                    | sed -E 's|scripts/bump-(.+)\.rb|\1|' \
+            casks=$(find scripts -maxdepth 1 -type f -name 'bump-*.rb' -printf '%f\n' \
+                    | sed -E 's|^bump-(.+)\.rb$|\1|' \
                     | jq -R -s -c 'split("\n")|map(select(length>0))')
           fi
           echo "casks=${casks}" >> "$GITHUB_OUTPUT"
