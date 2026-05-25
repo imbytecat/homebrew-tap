@@ -34,9 +34,8 @@ cask "ugreen-nas" do
   version "1.15.0.77685"
   sha256 "56b49d6e516657caaf7c97eb75ab2352bbd7ad962e2c8e01fdea5fdd096f0f62"
 
-  url "https://api-zh.ugnas.com/api/system/v1/ua/temp/link?appType=client&id=515",
-      using:    UgreenApiDownloadStrategy,
-      verified: "ugnas.com/"
+  url "https://api-zh.ugnas.com/api/system/v1/ua/temp/link?appType=client&id=515#v=#{version}",
+      using: UgreenApiDownloadStrategy
   name "UGREEN NAS"
   name "绿联云"
   desc "Desktop client for UGREEN NAS storage devices"
