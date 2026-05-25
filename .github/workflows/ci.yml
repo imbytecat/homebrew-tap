@@ -10,21 +10,11 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: homebrew-tap
 
       - uses: Homebrew/actions/setup-homebrew@main
         with:
           core: false
           cask: true
-
-      - name: Symlink checkout as imbytecat/homebrew-tap
-        run: |
-          set -eu
-          target_parent="$(brew --repository)/Library/Taps/imbytecat"
-          mkdir -p "$target_parent"
-          ln -snf "$GITHUB_WORKSPACE/homebrew-tap" "$target_parent/homebrew-tap"
-          brew tap
 
       - name: brew style
         run: brew style --cask imbytecat/tap
