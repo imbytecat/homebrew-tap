@@ -9,21 +9,24 @@ Style/StringLiterals:
 Style/StringLiteralsInInterpolation:
   EnforcedStyle: double_quotes
 
+Style/Documentation:
+  Enabled: false
+
 Layout/LineLength:
   Max: 118
 
 Metrics/AbcSize:
   Exclude:
-    - "scripts/*.rb"
+    - "scripts/**/*.rb"
 
 Metrics/MethodLength:
   Exclude:
-    - "scripts/*.rb"
+    - "scripts/**/*.rb"
 
 Metrics/CyclomaticComplexity:
   Exclude:
-    - "scripts/*.rb"
+    - "scripts/**/*.rb"
 
 Metrics/PerceivedComplexity:
   Exclude:
-    - "scripts/*.rb"
+    - "scripts/**/*.rb"
