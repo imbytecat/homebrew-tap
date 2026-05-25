@@ -152,7 +152,7 @@ Key implications:
 
 ## Action versions (current, all node24)
 
-`actions/checkout@v6`, `actions/setup-node@v5`, `ruby/setup-ruby@v1`,
+`actions/checkout@v6`, `actions/setup-node@v6`, `ruby/setup-ruby@v1`,
 `peter-evans/create-pull-request@v8`, `cloudflare/wrangler-action@v4`,
 `Homebrew/actions/setup-homebrew@main` (upstream never tags).
 
