@@ -3,7 +3,7 @@ cask "doubao-ime" do
   sha256 "b3db587a25deca06964c2d88961ccbb7824f14e58b5347bad5893f7fd9b1a421"
 
   url "https://lf-wave.doubaocdn.com/obj/doubao-ime/app/mac/DoubaoImeInstaller_v#{version}.zip",
-      verified: "lf-wave.doubaocdn.com/obj/doubao-ime/"
+      verified: "lf-wave.doubaocdn.com/obj/doubao-ime/app/mac/"
   name "Doubao IME"
   name "豆包输入法"
   desc "Voice-first input method by ByteDance"
@@ -12,7 +12,7 @@ cask "doubao-ime" do
   livecheck do
     url "https://shurufa.doubao.com/api/v1/app/download_url?platform=macos"
     strategy :json do |json|
-      json.dig("data", "version_name")&.delete_prefix("V")
+      json.dig("data", "version_name")&.sub(/\A[Vv]/, "")
     end
   end
 
