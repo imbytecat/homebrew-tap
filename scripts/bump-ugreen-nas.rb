@@ -10,8 +10,8 @@ require "uri"
 API_URL = "https://api.ugnas.com/api/system/v3/sa/apk"
 ARM_CLIENT_BIT = 3
 
-REPO_ROOT = File.expand_path("..", __dir__)
-CASK_PATH = File.join(REPO_ROOT, "Casks/ugreen-nas.rb")
+REPO_ROOT = File.expand_path("..", __dir__).freeze
+CASK_PATH = File.join(REPO_ROOT, "Casks/ugreen-nas.rb").freeze
 
 def fetch_json(url)
   uri = URI(url)

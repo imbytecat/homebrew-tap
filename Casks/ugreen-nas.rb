@@ -13,7 +13,7 @@ class UgreenApiDownloadStrategy < CurlDownloadStrategy
   private
 
   def resolve_url_basename_time_file_size(url, timeout: nil)
-    return super unless url == self.url
+    return super if url != self.url
 
     super(api_temp_url(timeout:), timeout:)
   end
@@ -53,7 +53,7 @@ cask "ugreen-nas" do
   end
 
   auto_updates true
-  depends_on macos: ">= :big_sur"
+  depends_on macos: :big_sur
   depends_on arch:  :arm64
 
   app "UGREEN NAS.app"
