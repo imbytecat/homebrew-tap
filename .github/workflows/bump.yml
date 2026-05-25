@@ -26,6 +26,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -n "${INPUT_CASK}" ]; then
+            [[ "${INPUT_CASK}" =~ ^[a-z0-9-]+$ ]] || { echo "invalid cask name: ${INPUT_CASK}" >&2; exit 1; }
+            test -f "scripts/bump-${INPUT_CASK}.rb" || { echo "no such bumper: scripts/bump-${INPUT_CASK}.rb" >&2; exit 1; }
             casks=$(jq -R -c -n --arg c "$INPUT_CASK" '[$c]')
           else
             casks=$(find scripts -maxdepth 1 -type f -name 'bump-*.rb' -printf '%f\n' \
