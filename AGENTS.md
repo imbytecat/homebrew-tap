@@ -98,8 +98,8 @@ session hook will object otherwise.
   (UGREEN's is ~8 min).
 - The Worker URL hostname (`homebrew-proxy.imbytecat.workers.dev`) lives in
   one constant: `CaskBumper::WORKER_BASE` in `scripts/lib/cask_bumper.rb`.
-  Each cask DSL file also hardcodes it in `url` / `verified:` (cask DSL
-  can't reference Ruby constants). Keep these in sync.
+  Each proxied cask DSL file also hardcodes it in `url` / `verified:` (cask
+  DSL can't reference Ruby constants). Keep these in sync.
 - TypeScript strict + `@cloudflare/workers-types`. `npm run typecheck`
   must pass. `npx wrangler deploy --dry-run` works offline as a smoke test.
 - `npm test` runs vitest in plain node env, mocking `globalThis.fetch`.
@@ -122,7 +122,7 @@ session hook will object otherwise.
   submitted to `homebrew/homebrew-cask` and applies strict rules
   irrelevant to a personal tap.
 - `brew audit --online` actually downloads the DMG to verify SHA256.
-  Each run consumes one Worker call per cask.
+  Each run consumes one Worker call per proxied cask.
 - `bump.yml` discovers casks dynamically via `find scripts -name 'bump-*.rb' -printf '%f\n'`.
   Adding a cask = create `Casks/<name>.rb` + `scripts/bump-<name>.rb`; no
   workflow edit needed. **Don't use `ls glob` here** — shellcheck SC2012

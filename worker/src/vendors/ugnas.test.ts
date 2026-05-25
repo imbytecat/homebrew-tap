@@ -38,7 +38,7 @@ describe("resolveDownloadUrl", () => {
 
 describe("ugnas Hono app", () => {
   it("rejects unknown id with 400", async () => {
-    const res = await ugnas.request("/dl?id=999");
+    const res = await ugnas.request("/dl?id=516");
     expect(res.status).toBe(400);
   });
 

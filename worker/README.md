@@ -1,8 +1,9 @@
 # homebrew-proxy
 
 Cloudflare Worker that resolves vendor signed-URL APIs and 302-redirects to
-the real download. Used by [`imbytecat/homebrew-tap`](..) casks so end-user
-installs don't hit per-IP CAPTCHAs on vendor APIs.
+the real download. Used by CAPTCHA-gated casks in
+[`imbytecat/homebrew-tap`](..) so end-user installs don't hit per-IP
+CAPTCHAs on vendor APIs.
 
 ## Stack
 
@@ -14,7 +15,7 @@ installs don't hit per-IP CAPTCHAs on vendor APIs.
 
 | Route | Vendor | Notes |
 | --- | --- | --- |
-| `GET /ugnas/dl?id=<appId>` | UGREEN | Allowed ids: `515` (mac arm64), `516` (mac x64), `514` (win64), `517` (android), `502` (android-tv) |
+| `GET /ugnas/dl?id=<appId>&v=<version>` | UGREEN | Allowed ids: `515` (mac arm64). `v` is the cask-pinned version; the Worker caches the resolved signed URL per `id/v` for 5 min. |
 
 ## Local dev
 

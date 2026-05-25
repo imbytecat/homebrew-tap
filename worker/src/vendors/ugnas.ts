@@ -3,7 +3,7 @@ import { redirectProxy, USER_AGENT } from "../lib/proxy";
 
 const API_BASE = "https://api-zh.ugnas.com/api/system/v1/ua/temp/link";
 
-const ALLOWED_IDS = new Set(["515", "516", "514", "517", "502"]);
+const ALLOWED_IDS = new Set(["515"]);
 
 interface UgnasResponse {
   msg?: string;
@@ -29,8 +29,9 @@ ugnas.get("/dl", (c) => {
   if (!id || !ALLOWED_IDS.has(id)) {
     return c.text(`Invalid or unknown id: ${id ?? "<missing>"}`, 400);
   }
+  const v = c.req.query("v") ?? "latest";
   return redirectProxy(c, {
-    cacheKey: `ugnas/${id}`,
+    cacheKey: `ugnas/${id}/${v}`,
     resolve: () => resolveDownloadUrl(id),
     ttl: 300,
   });
