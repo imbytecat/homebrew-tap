@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  brew:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Homebrew/actions/setup-homebrew@main
+        with:
+          core: false
+          cask: true
+      - name: brew style
+        run: brew style --cask "$GITHUB_WORKSPACE"
+      - name: brew audit
+        run: brew audit --cask --new --online "$GITHUB_WORKSPACE/Casks/ugreen-nas.rb"
