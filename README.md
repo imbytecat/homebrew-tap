@@ -16,7 +16,7 @@ brew install --cask imbytecat/tap/<cask>
 
 | Cask | Notes |
 | --- | --- |
-| [`ugreen-nas`](Casks/ugreen-nas.rb) | UGREEN NAS (绿联云), Apple Silicon only. |
+| [`ugreen-nas`](Casks/ugreen-nas.rb) | UGREEN NAS (绿联云). |
 
 ## How it works
 
@@ -41,9 +41,6 @@ brew install ──▶ Cask url (workers.dev/<vendor>/dl?…)
 
 See [`worker/README.md`](worker/README.md) for Worker deploy steps and
 [`AGENTS.md`](AGENTS.md) for how to add a new cask.
-
-Intel x86 is intentionally not packaged — Homebrew is winding down Intel
-support.
 
 ## Development
 

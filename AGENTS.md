@@ -189,7 +189,6 @@ the *what*.
 
 ## Things deliberately not done
 
-- **No Intel x86 cask.** Homebrew is winding down Intel.
 - **`auto_updates true` kept** — UGREEN ships its own updater inside the
   app, brew won't fight it.
 - **No `pkgutil:` / `launchctl:` / `signal:` in `uninstall`/`zap`** — this
