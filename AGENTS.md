@@ -106,17 +106,49 @@ session hook will object otherwise.
   ([main.sh](https://github.com/Homebrew/actions/blob/master/setup-homebrew/main.sh#L104-L106))
 - `brew audit --tap imbytecat/tap` is the canonical tap-wide form used by
   `homebrew/homebrew-cask` itself. Don't enumerate casks manually.
+- `brew style` does **not** accept `--tap`; pass the tap name as a
+  positional (`brew style --cask imbytecat/tap`). Only `brew audit` has
+  `--tap`. (One of those gotchas you only find by failing CI.)
 - `brew audit` runs without `--new` here. `--new` is for casks being
   submitted to `homebrew/homebrew-cask` and applies strict rules
   irrelevant to a personal tap.
 - `brew audit --online` actually downloads the DMG to verify SHA256.
   Each run consumes one Worker call per cask.
-- `bump.yml` discovers casks dynamically (`ls scripts/bump-*.rb | jq -R -s …`).
+- `bump.yml` discovers casks dynamically via `find scripts -name 'bump-*.rb' -printf '%f\n'`.
   Adding a cask = create `Casks/<name>.rb` + `scripts/bump-<name>.rb`; no
-  workflow edit needed.
+  workflow edit needed. **Don't use `ls glob` here** — shellcheck SC2012
+  fires (see "brew style internals" below).
 - The deploy workflow explicitly fails with a clear error when
   `CLOUDFLARE_API_TOKEN` is missing — don't remove that check, the
   underlying `wrangler` failure is unreadable.
+
+## `brew style` internals (the part nobody tells you)
+
+`brew style` is **four linters orchestrated by one command**, not just rubocop:
+
+| Tool | Targets | Installed by `brew style` |
+| --- | --- | --- |
+| `rubocop` | `*.rb` (cask + scripts) | via `Library/Homebrew/style.rb` |
+| `shellcheck` | `*.sh` (we have none) and **embedded in actionlint** | brew formula |
+| `shfmt` | `*.sh` | brew formula |
+| `actionlint` | `.github/workflows/*.yml` | brew formula |
+
+Key implications:
+
+- **`brew style` has no flag to disable actionlint** (only `--only-cops` /
+  `--except-cops` exist, and those are rubocop-only). If you ever need to
+  suppress an actionlint check, use `.github/actionlint.yaml`'s
+  `paths.ignore` or inline `# actionlint-disable` directives.
+- **Local `actionlint` ≠ `brew style`'s actionlint.** Standalone `actionlint`
+  calls `exec.LookPath("shellcheck")`; if shellcheck isn't on PATH it
+  **silently disables** shellcheck rules (verbose-only log). `brew style`
+  passes the absolute shellcheck path explicitly so it always runs.
+  ⇒ Local repro requires **both** in PATH: dev shell has both via flake.
+- actionlint's shellcheck integration **always disables** these SC rules
+  inside `${{ … }}` substitution blocks because of false positives:
+  SC1091, SC2050, SC2154, SC2157, SC2043, SC2194. Don't expect them to fire.
+- Use `shell: bash` not `shell: /bin/bash` in workflow `run:` steps; the
+  latter can confuse actionlint's shell detection.
 
 ## Action versions (current, all node24)
 
