@@ -8,15 +8,13 @@ bump CASK:
 
 style:
     rubocop scripts
-
-worker-dev:
-    cd worker && npm install && npm run dev
-
-worker-deploy:
-    cd worker && npm install && npm run typecheck && npm test && npx wrangler deploy
-
-worker-typecheck:
-    cd worker && npm install && npm run typecheck
+    actionlint .github/workflows/*.yml
 
 worker-test:
-    cd worker && npm install && npm test
+    cd worker && npm run typecheck && npm test
+
+worker-dev:
+    cd worker && npm run dev
+
+worker-deploy:
+    cd worker && npx wrangler deploy
