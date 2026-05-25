@@ -76,8 +76,10 @@ session hook will object otherwise.
   vendor API; GH Actions runner IPs can also get CAPTCHA'd. Public-CDN
   vendors download directly (the Worker would add latency for no benefit).
 - Verifies upstream `md5` from LIST against the downloaded file before
-  computing SHA256, *only if* the LIST endpoint exposes one. Subclass's
-  `#upstream` returns `{ version:, md5: nil }` if no md5 is available.
+  computing SHA256, when available. Subclass's `#upstream` returns at
+  least `{ version: }`; include `md5:` only if the LIST endpoint exposes
+  one. Hash is duck-typed — base class reads `info[:md5]` and skips the
+  check when absent.
 - `CaskBumper::Bumper#rewrite_cask` uses line-anchored regexes
   (`^\s*version\s+"…"` / `^\s*sha256\s+"…"`). The URL line contains
   `#{version}` literally, so it's never matched.
