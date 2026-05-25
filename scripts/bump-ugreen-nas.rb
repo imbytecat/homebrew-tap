@@ -7,7 +7,8 @@ require "net/http"
 require "tmpdir"
 require "uri"
 
-API_URL = "https://api.ugnas.com/api/system/v3/sa/apk"
+LIST_API = "https://api.ugnas.com/api/system/v3/sa/apk"
+WORKER_DL = "https://ugnas-proxy.imbytecat.workers.dev/dl"
 ARM_CLIENT_BIT = 3
 
 REPO_ROOT = File.expand_path("..", __dir__).freeze
@@ -42,10 +43,9 @@ def sha256(path)
 end
 
 def main
-  warn "Fetching #{API_URL} ..."
-  items = fetch_json(API_URL).dig("data", "appSoftVers") || abort("Bad API payload")
-
-  item = find_arm_item(items) || abort("No Apple Silicon macOS build found in API response")
+  warn "Fetching #{LIST_API} ..."
+  items = fetch_json(LIST_API).dig("data", "appSoftVers") || abort("Bad API payload")
+  item = find_arm_item(items) || abort("No Apple Silicon macOS build found")
   version = item["verName"]&.delete_prefix("v") || abort("Missing verName")
 
   current = current_cask_version
@@ -55,13 +55,11 @@ def main
   end
   warn "Bumping #{current} -> #{version}"
 
-  temp_url = fetch_json(item["pkgUrl"]).dig("data", "linkData", "tempUrl") ||
-             abort("API returned no tempUrl for pkg")
-
   arm_sha = Dir.mktmpdir("ugreen-bump-") do |tmp|
     dest = File.join(tmp, "ugreen-nas-arm64.dmg")
-    warn "Downloading #{temp_url[0, 100]}..."
-    abort "curl failed" unless system("curl", "-fL", "--retry", "3", "-o", dest, temp_url)
+    worker_url = "#{WORKER_DL}?id=515"
+    warn "Downloading via #{worker_url} ..."
+    abort "curl failed" unless system("curl", "-fL", "--retry", "3", "-o", dest, worker_url)
 
     actual_md5 = Digest::MD5.file(dest).hexdigest
     abort "MD5 mismatch: got #{actual_md5}, expected #{item["md5"]}" if item["md5"] && actual_md5 != item["md5"]

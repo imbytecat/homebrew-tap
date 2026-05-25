@@ -22,15 +22,25 @@ just bump-ugreen-nas # refresh version + sha256 from upstream API
 just style           # rubocop on scripts
 ```
 
-## Why `ugreen-nas` needs a custom download strategy
+## Why a Cloudflare Worker proxy
 
-UGREEN's CDN only serves the `.dmg` via short-lived (~8 min) signed URLs
-fetched from `api-zh.ugnas.com`. Pinning a URL into the cask doesn't work, so
-the cask defines `UgreenApiDownloadStrategy < CurlDownloadStrategy` (modeled
-on Homebrew's own `CurlApacheMirrorDownloadStrategy`) that resolves the signed
-URL at install time. The `sha256` stays pinned to the published build and is
-refreshed by `scripts/bump-ugreen-nas.rb` whenever upstream cuts a new
-release.
+UGREEN's CDN only serves the macOS DMG via short-lived (~8 min) signed URLs
+fetched from `api-zh.ugnas.com`. That endpoint enforces a sticky per-IP
+CAPTCHA, so a normal `brew install` from a home network gets blocked after
+a few requests.
+
+[`worker/`](worker/) holds a tiny Cloudflare Worker (`ugnas-proxy`) that
+sits in front of the API: end users hit a stable
+`https://ugnas-proxy.<sub>.workers.dev/dl?id=515` URL, Cloudflare's edge IPs
+talk to UGREEN (and absorb the rate limit), and the Worker 302-redirects to
+the freshly-signed CDN URL. Signed URLs are cached for 5 min so multiple
+installs in a window share a single API call.
+
+The cask points at the Worker URL with a pinned `sha256` of the published
+build; `scripts/bump-ugreen-nas.rb` refreshes the version + sha when upstream
+cuts a release.
+
+See [`worker/README.md`](worker/README.md) for deploy steps.
 
 Intel x86 is intentionally not packaged here — Homebrew is winding down Intel
 support. Grab the Intel `.dmg` from <https://www.ugnas.com/download/> if you
