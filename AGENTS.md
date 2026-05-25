@@ -84,6 +84,9 @@ session hook will object otherwise.
 - Pinned versions live in `worker/package.json` and the lockfile.
   `cloudflare/wrangler-action@v4` honors the package-local wrangler instead
   of pulling its default. Do not drop the lockfile; CI runs `npm ci`.
+  **`nix develop` does NOT install wrangler / vitest** — they live in
+  `worker/node_modules/`; run `cd worker && npm install` once after entering
+  the dev shell, otherwise `just worker-*` recipes fail.
 - `caches.default` (Cloudflare Cache API) is used instead of KV — no
   bindings to manage. 5-minute TTL is below typical signature lifetimes
   (UGREEN's is ~8 min).
