@@ -1,5 +1,8 @@
 import type { Context } from "hono";
 
+export const USER_AGENT =
+  "homebrew-proxy/1.0 (+https://github.com/imbytecat/homebrew-tap)";
+
 export interface RedirectProxyOptions {
   cacheKey: string;
   resolve: () => Promise<string>;
@@ -19,6 +22,7 @@ export async function redirectProxy(c: Context, opts: RedirectProxyOptions) {
   try {
     url = await opts.resolve();
   } catch (e) {
+    console.error(`[${opts.cacheKey}] resolve failed:`, e);
     return c.text(`Upstream error: ${(e as Error).message}`, 502);
   }
 
