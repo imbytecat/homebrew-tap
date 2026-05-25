@@ -21,6 +21,7 @@ module CaskBumper
     end
 
     def run
+      download_url
       info = upstream
       version = info.fetch(:version)
       current = current_cask_version
