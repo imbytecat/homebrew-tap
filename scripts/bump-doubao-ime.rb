@@ -19,7 +19,7 @@ class DoubaoImeBumper < CaskBumper::Bumper
       version = data["version_name"]&.sub(/\A[Vv]/, "") || abort("missing version_name")
       url = data["url"] || abort("missing url")
       expected = format(URL_TEMPLATE, version: version)
-      abort "upstream URL drifted: got #{url}, expected #{expected}" unless url == expected
+      abort "upstream URL drifted: got #{url}, expected #{expected}" if url != expected
       { version: version, url: url, md5: nil }
     end
   end
