@@ -1,9 +1,9 @@
 # imbytecat/homebrew-tap
 
-Personal Homebrew tap for Chinese-vendor desktop / NAS clients whose
-download endpoints sit behind sticky per-IP CAPTCHAs. A small Cloudflare
-Worker in [`worker/`](worker/) resolves the vendor signed-URL APIs from
-edge IPs so `brew install` works from any home network.
+Personal Homebrew tap for Chinese-vendor desktop apps. Some vendors gate
+downloads behind sticky per-IP CAPTCHAs — a small Cloudflare Worker in
+[`worker/`](worker/) resolves those from edge IPs so `brew install` works
+from any home network. Other casks point at the vendor CDN directly.
 
 ## Install
 
@@ -16,11 +16,12 @@ brew install --cask imbytecat/tap/<cask>
 
 | Cask | Notes |
 | --- | --- |
+| [`doubao-ime`](Casks/doubao-ime.rb) | Doubao Input Method (豆包输入法). Installs to `~/Library/Input Methods`. |
 | [`ugreen-nas`](Casks/ugreen-nas.rb) | UGREEN NAS (绿联云). |
 
 ## How it works
 
-Each cask's `url` points at the Worker, not the vendor:
+CAPTCHA-gated casks (e.g. `ugreen-nas`) point `url` at the Worker:
 
 ```
 brew install ──▶ Cask url (workers.dev/<vendor>/dl?…)
@@ -31,10 +32,14 @@ brew install ──▶ Cask url (workers.dev/<vendor>/dl?…)
                    └────────── 302 redirect ─────────────────────────┘
 ```
 
+Casks whose vendor CDN is publicly reachable (e.g. `doubao-ime`) point
+`url` straight at the CDN and skip the Worker.
+
 - Cask pins `version` + `sha256` of the published build.
 - A per-cask bumper in [`scripts/`](scripts/) reads the vendor LIST endpoint
-  (no CAPTCHA), exits if unchanged, downloads through the Worker, verifies
-  upstream MD5, and rewrites the cask. A weekly GitHub Action runs every
+  (no CAPTCHA), exits if unchanged, downloads (through the Worker for
+  CAPTCHA-gated vendors, directly otherwise), verifies upstream MD5 when
+  available, and rewrites the cask. A weekly GitHub Action runs every
   bumper in a matrix and opens one PR per outdated cask.
 - The Worker caches each signed URL for 5 min (Cloudflare `caches.default`)
   so hot installs share a single upstream call.

@@ -6,15 +6,18 @@ Operational notes for AI coding agents working in `imbytecat/homebrew-tap`.
 
 ## Architecture in one paragraph
 
-This tap distributes Chinese NAS clients whose vendor download endpoints sit
-behind sticky per-IP CAPTCHAs. To make `brew install` work from any user's
-home network, every cask points its `url` at a Cloudflare Worker
-(`worker/`, name `homebrew-proxy`). The Worker hits the vendor API from
-Cloudflare edge IPs and 302-redirects to the freshly-signed CDN URL. The
-cask still pins `sha256` of the published build; a bump script refreshes
-version + sha when upstream cuts a release. **Do not write a cask whose URL
-points directly at the vendor API — that route has been tried and it fails
-in production due to CAPTCHA.**
+This tap distributes Chinese NAS clients and similar desktop software whose
+vendor download endpoints sometimes sit behind sticky per-IP CAPTCHAs. To
+make `brew install` work from any user's home network, **CAPTCHA-gated**
+casks point their `url` at a Cloudflare Worker (`worker/`, name
+`homebrew-proxy`); the Worker hits the vendor API from Cloudflare edge IPs
+and 302-redirects to the freshly-signed CDN URL. Casks with **publicly
+reachable CDN URLs** (e.g. `doubao-ime`) skip the Worker entirely and
+point `url` at the vendor CDN directly. The cask always pins `sha256` of
+the published build; a bump script refreshes version + sha when upstream
+cuts a release. **Do not write a CAPTCHA-gated cask whose URL points
+directly at the vendor API — that route has been tried and it fails in
+production due to CAPTCHA.**
 
 ## Layout
 
@@ -23,8 +26,8 @@ in production due to CAPTCHA.**
 | `Casks/<name>.rb` | The cask. Pure declarative DSL. No `require`, no custom class, URL must include `#{version}` interpolation. |
 | `worker/` | Cloudflare Worker. TS + Hono. Each new vendor = a Hono sub-app under `worker/src/vendors/<vendor>.ts`, mounted in `worker/src/index.ts`. The generic `redirectProxy(c, { resolve, cacheKey, ttl })` helper in `worker/src/lib/proxy.ts` handles `caches.default` + 302; vendor modules just export a `resolveDownloadUrl(id)` and a `Hono` sub-app. `USER_AGENT` is the one shared constant. |
 | `worker/src/vendors/*.test.ts` | Vitest tests for each vendor's resolver. Plain node env, `fetch` mocked via `vi.spyOn`. Pool-Workers is not used — we only test pure resolve logic, not `caches.default`. |
-| `scripts/lib/cask_bumper.rb` | `CaskBumper::Bumper` base class. Subclasses override `#worker_path` and `#upstream` (returns `{ version:, md5: }`). Base handles HTTP, MD5 check, SHA256, cask file rewrite, `WORKER_BASE` constant. |
-| `scripts/bump-<name>.rb` | Thin subclass per cask. Detects upstream version via the cask's LIST endpoint (no CAPTCHA), exits if unchanged, downloads via the Worker, verifies upstream MD5, rewrites the cask. |
+| `scripts/lib/cask_bumper.rb` | `CaskBumper::Bumper` base class. Subclasses override `#upstream` (returns `{ version:, md5: }`) and either `#worker_path` (CAPTCHA-gated vendor → proxied via Worker) or `#download_url` (public CDN → direct). Base handles HTTP, MD5 check, SHA256, cask file rewrite, `WORKER_BASE` constant. |
+| `scripts/bump-<name>.rb` | Thin subclass per cask. Detects upstream version via the cask's LIST endpoint (no CAPTCHA), exits if unchanged, downloads (through the Worker for CAPTCHA-gated vendors, directly otherwise), verifies upstream MD5 when available, rewrites the cask. |
 | `.github/workflows/ci.yml` | macOS: `brew style --cask imbytecat/tap` + `brew audit --cask --online --tap imbytecat/tap`. Ubuntu: `rubocop scripts/` and worker `npm ci` + `typecheck` + `test`. Runs on push + PR. |
 | `.github/workflows/deploy-worker.yml` | `npm ci` → `typecheck` → `test` → `wrangler deploy`. Triggers on push to `main` touching `worker/**` or the workflow file itself. |
 | `.github/workflows/bump.yml` | Weekly + manual. `discover` job uses `find scripts -name 'bump-*.rb' -printf '%f\n'` to build a matrix; `bump` job runs each in parallel, opens one PR per outdated cask. `workflow_dispatch` accepts an optional `cask` input to bump just one. |
@@ -32,7 +35,7 @@ in production due to CAPTCHA.**
 | `flake.nix` | Dev shell: ruby_3_3 + rubocop, nodejs_22, just, curl, p7zip, libplist, jq, actionlint, shellcheck. |
 | `Justfile` | `set shell := ["bash", "-ceuo", "pipefail"]`. Recipes: `bump <name>` / `style` (rubocop + actionlint) / `worker-test` (typecheck + vitest) / `worker-dev` / `worker-deploy`. Worker recipes assume `npm install` was run once. |
 | `worker/wrangler.toml` | Pins `name = "homebrew-proxy"`, `main = "src/index.ts"`, `compatibility_date = "<recent>"`. Bump `compatibility_date` rather than dropping it. |
-| `.rubocop.yml` | `TargetRubyVersion: 3.3`, double-quote strings, `Layout/LineLength: 118`, `Style/Documentation: Enabled: false`, `scripts/**/*.rb` excluded from `Metrics/*` cops. |
+| `.rubocop.yml` | `TargetRubyVersion: 3.3`, double-quote strings, `Layout/LineLength: 118`, `Style/Documentation: Enabled: false`, `Casks/**/*` excluded entirely (cask DSL is checked by `brew style`'s Homebrew-aware rubocop), `scripts/**/*.rb` excluded from `Metrics/*` cops. |
 
 ## Cask invariants (the cop will catch you)
 
@@ -56,7 +59,8 @@ in production due to CAPTCHA.**
 - Cask files: none.
 - Bump scripts and `scripts/lib/cask_bumper.rb`: only `# frozen_string_literal: true`
   (mandatory pragma) and a single class-level doc on `CaskBumper::Bumper`
-  that defines the subclass contract (`#worker_path`, `#upstream`).
+  that defines the subclass contract (`#upstream` + one of `#worker_path`
+  / `#download_url`).
 - TypeScript: none beyond what's needed to disambiguate non-obvious behavior.
 
 When adding any new comment, justify it as documenting non-obvious
@@ -68,16 +72,18 @@ session hook will object otherwise.
 - Reads LIST endpoint (no CAPTCHA) first, compares to current cask version,
   returns early if unchanged. **Never download speculatively** — every
   wasteful fetch nudges the IP toward CAPTCHA on the download endpoint.
-- Downloads through the Worker, not direct from the vendor API. GH Actions
-  runner IPs can also get CAPTCHA'd; the Worker absorbs that.
+- CAPTCHA-gated vendors download through the Worker, not direct from the
+  vendor API; GH Actions runner IPs can also get CAPTCHA'd. Public-CDN
+  vendors download directly (the Worker would add latency for no benefit).
 - Verifies upstream `md5` from LIST against the downloaded file before
   computing SHA256, *only if* the LIST endpoint exposes one. Subclass's
   `#upstream` returns `{ version:, md5: nil }` if no md5 is available.
 - `CaskBumper::Bumper#rewrite_cask` uses line-anchored regexes
   (`^\s*version\s+"…"` / `^\s*sha256\s+"…"`). The URL line contains
   `#{version}` literally, so it's never matched.
-- Subclass MUST stay thin: only `worker_path` + `upstream` + per-vendor
-  constants. If you reach for a shared HTTP helper, add it to the base.
+- Subclass MUST stay thin: only `#upstream` + one of (`#worker_path` /
+  `#download_url`) + per-vendor constants. If you reach for a shared HTTP
+  helper, add it to the base.
 
 ## Worker
 
@@ -162,7 +168,7 @@ Key implications:
 When bumping any, check `runs.using:` in the action's `action.yml`; refuse
 anything still on `node20`.
 
-## Adding a new cask for a vendor with signed URLs
+## Adding a new cask
 
 1. **Probe vendor API**: confirm there's a list endpoint (for `livecheck`
    and version detection) and a download endpoint. Document whether the
@@ -170,18 +176,22 @@ anything still on `node20`.
 2. **Inventory bundle IDs**: extract the DMG with `7z x <file>.dmg`
    (provided by `flake.nix`), enumerate all `Info.plist` bundle IDs (main +
    helpers + embedded apps) — these drive the `zap` stanza. Don't guess.
-3. **Worker vendor module**: add `worker/src/vendors/<vendor>.ts` that
+3. **Decide route**:
+   - **Public CDN, no CAPTCHA** → cask `url` points at the vendor CDN
+     directly. Skip steps 4–5. Bumper subclass overrides `#download_url`.
+   - **CAPTCHA-gated** → continue with steps 4–5.
+4. **Worker vendor module**: add `worker/src/vendors/<vendor>.ts` that
    exports `resolveDownloadUrl(id)` and a `Hono` sub-app, mount it under a
    vendor-named path in `worker/src/index.ts`. Use `redirectProxy` from
    `worker/src/lib/proxy.ts` and the shared `USER_AGENT` constant.
-4. **Worker tests**: drop a `worker/src/vendors/<vendor>.test.ts` mirroring
+5. **Worker tests**: drop a `worker/src/vendors/<vendor>.test.ts` mirroring
    `ugnas.test.ts` — mock `globalThis.fetch`, assert success + non-2xx +
    missing-field cases.
-5. **Cask**: add `Casks/<name>.rb`, point `url` at the new Worker path,
-   include `#{version}` interpolation.
-6. **Bump subclass**: add `scripts/bump-<name>.rb` extending
-   `CaskBumper::Bumper`. Implement `#worker_path` and `#upstream` only.
-7. **Done with workflows**: `bump.yml` auto-discovers `scripts/bump-*.rb`;
+6. **Cask**: add `Casks/<name>.rb` with `#{version}` interpolation in `url`.
+7. **Bump subclass**: add `scripts/bump-<name>.rb` extending
+   `CaskBumper::Bumper`. Implement `#upstream` + one of `#worker_path` /
+   `#download_url`.
+8. **Done with workflows**: `bump.yml` auto-discovers `scripts/bump-*.rb`;
    `ci.yml` and `deploy-worker.yml` are tap-wide. No workflow edits needed.
 
 ## Commit style
