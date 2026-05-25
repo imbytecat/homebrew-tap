@@ -53,8 +53,8 @@ jobs:
       - run: ruby scripts/bump-${{ matrix.cask }}.rb
       - uses: peter-evans/create-pull-request@v8
         with:
-          commit-message: "${{ matrix.cask }}: bump"
-          title: "${{ matrix.cask }}: bump"
+          commit-message: "chore(${{ matrix.cask }}): 自动 bump 至新版"
+          title: "chore(${{ matrix.cask }}): 自动 bump 至新版"
           branch: bot/bump-${{ matrix.cask }}
           delete-branch: true
           add-paths: Casks/${{ matrix.cask }}.rb
