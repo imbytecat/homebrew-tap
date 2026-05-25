@@ -21,6 +21,12 @@ cask "doubao-ime" do
 
   input_method "DoubaoIme.app"
 
+  postflight do
+    system_command "/usr/bin/xattr",
+                   args: ["-d", "-r", "com.apple.quarantine",
+                          "#{Dir.home}/Library/Input Methods/DoubaoIme.app"]
+  end
+
   uninstall quit: [
     "com.bytedance.inputmethod.doubaoime",
     "com.bytedance.inputmethod.doubaoime.settings",
