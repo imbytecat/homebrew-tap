@@ -20,7 +20,7 @@ jobs:
           cask: true
 
       - name: brew style
-        run: brew style --cask --tap imbytecat/tap
+        run: brew style --cask imbytecat/tap
 
       - name: brew audit
         run: brew audit --cask --online --tap imbytecat/tap
