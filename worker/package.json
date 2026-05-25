@@ -1,0 +1,18 @@
+{
+  "name": "homebrew-proxy",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.12.23"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260525.1",
+    "typescript": "^5.6.0",
+    "wrangler": "^4.94.0"
+  }
+}

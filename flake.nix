@@ -24,6 +24,7 @@
             ruby
             pkgs.just
             pkgs.curl
+            pkgs.nodejs_22
           ];
         };
 

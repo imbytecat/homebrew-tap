@@ -4,3 +4,5 @@ result-*
 .cache/
 .bundle/
 vendor/bundle/
+node_modules/
+.wrangler/

@@ -8,7 +8,7 @@ require "tmpdir"
 require "uri"
 
 LIST_API = "https://api.ugnas.com/api/system/v3/sa/apk"
-WORKER_DL = "https://ugnas-proxy.imbytecat.workers.dev/dl"
+WORKER_DL = "https://homebrew-proxy.imbytecat.workers.dev/ugnas/dl"
 ARM_CLIENT_BIT = 3
 
 REPO_ROOT = File.expand_path("..", __dir__).freeze

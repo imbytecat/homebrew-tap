@@ -1,48 +1,64 @@
-# ugnas-proxy
+# homebrew-proxy
 
-Cloudflare Worker that proxies UGreen's per-IP CAPTCHA-gated download endpoint
-so Homebrew (and any HTTP client) gets a stable redirect-style URL.
+Cloudflare Worker that resolves vendor signed-URL APIs and 302-redirects to
+the real download. Used by [`imbytecat/homebrew-tap`](..) casks so end-user
+installs don't hit per-IP CAPTCHAs on vendor APIs.
 
-## Endpoint
+## Stack
 
+- TypeScript on Workers runtime
+- [Hono](https://hono.dev) for routing
+- Wrangler pinned in `package.json` (auto-picked by `wrangler-action`)
+- Generic [`redirectProxy`](src/lib/proxy.ts) helper — vendor modules just
+  supply `resolve()` + cache key + TTL
+
+## Routes
+
+| Route | Vendor | Notes |
+| --- | --- | --- |
+| `GET /ugnas/dl?id=<appId>` | UGREEN | Allowed ids: `515` (mac arm64), `516` (mac x64), `514` (win64), `517` (android), `502` (android-tv) |
+
+Add a new vendor:
+
+1. Drop `src/vendors/<vendor>.ts` exporting a `Hono` sub-app
+2. `app.route("/<vendor>", <vendor>)` in `src/index.ts`
+
+## Local dev
+
+```sh
+nix develop                        # gives you node + ruby + just + curl
+cd worker
+npm install
+npm run typecheck
+npm run dev                        # wrangler dev at http://localhost:8787
 ```
-GET /dl?id=<appId> -> 302 to https://dl-cn.ugnas.com/.../<file>.dmg?signature=...
-```
-
-| id | platform |
-| --- | --- |
-| 515 | UGREEN NAS macOS Apple Silicon |
-| 516 | UGREEN NAS macOS Intel |
-| 514 | UGREEN NAS Windows 64-bit |
-| 517 | UGREEN NAS Android |
-| 502 | UGREEN NAS Android TV |
-
-Add more ids in [`src/index.js`](src/index.js) `ALLOWED_IDS`.
 
 ## First-time deploy
 
 ```sh
 cd worker
-npx wrangler login
+npm install
+npx wrangler login                 # browser-based OAuth
 npx wrangler deploy
 ```
 
-Wrangler will assign a URL like `https://ugnas-proxy.<your-subdomain>.workers.dev`.
-Update [`Casks/ugreen-nas.rb`](../Casks/ugreen-nas.rb) `url` and `verified:`
-to that hostname if it isn't `imbytecat.workers.dev`.
+Wrangler assigns `https://homebrew-proxy.<your-subdomain>.workers.dev`. If
+your CF subdomain isn't `imbytecat`, update `Casks/ugreen-nas.rb` and
+`scripts/bump-ugreen-nas.rb` to match.
 
-## Auto-deploy via GitHub Actions
+## Auto-deploy from CI
 
 ```sh
 gh secret set CLOUDFLARE_API_TOKEN
 ```
 
-Token comes from Cloudflare Dashboard → My Profile → API Tokens → use the
-*Edit Cloudflare Workers* template. Every push to `main` that touches
-`worker/` will redeploy.
+Token from Cloudflare Dashboard → My Profile → API Tokens → *Edit Cloudflare
+Workers* template. `.github/workflows/deploy-worker.yml` runs `npm ci`,
+`tsc --noEmit`, then `wrangler deploy` on every push to `main` touching
+`worker/`.
 
-## Cache behavior
+## Cache
 
-Each `id` is cached for 5 minutes. UGreen's signed URL is valid ~8 minutes,
-so a cached redirect has 3+ minutes of validity left in the worst case.
-Plenty for a 330 MB DMG over CDN.
+Each cache key is held for 5 min (UGREEN signed URLs live ~8 min). Hot keys
+share a single upstream call so end users almost never trigger the upstream
+CAPTCHA gate even at the Worker level.
