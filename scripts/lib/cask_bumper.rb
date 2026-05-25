@@ -55,6 +55,10 @@ module CaskBumper
       File.read(@cask_path)[/^\s*version\s+"([^"]+)"/, 1]
     end
 
+    def cask_url_template
+      File.read(@cask_path)[/^\s*url\s+"([^"]+)"/, 1] || abort("can't read url from #{@cask_path}")
+    end
+
     def download_and_sha256(expected_md5: nil)
       Dir.mktmpdir("#{@name}-bump-") do |tmp|
         dest = File.join(tmp, "download")
@@ -66,9 +70,12 @@ module CaskBumper
           abort "md5 mismatch: got #{actual}, expected #{expected_md5}" if actual != expected_md5
         end
 
+        validate_download(dest)
         Digest::SHA256.file(dest).hexdigest
       end
     end
+
+    def validate_download(_path); end
 
     def rewrite_cask(version:, sha256:)
       cask = File.read(@cask_path)

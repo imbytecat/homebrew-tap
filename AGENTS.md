@@ -26,7 +26,7 @@ production due to CAPTCHA.**
 | `Casks/<name>.rb` | The cask. Pure declarative DSL. No `require`, no custom class, URL must include `#{version}` interpolation. |
 | `worker/` | Cloudflare Worker. TS + Hono. Each new vendor = a Hono sub-app under `worker/src/vendors/<vendor>.ts`, mounted in `worker/src/index.ts`. The generic `redirectProxy(c, { resolve, cacheKey, ttl })` helper in `worker/src/lib/proxy.ts` handles `caches.default` + 302; vendor modules just export a `resolveDownloadUrl(id)` and a `Hono` sub-app. `USER_AGENT` is the one shared constant. |
 | `worker/src/vendors/*.test.ts` | Vitest tests for each vendor's resolver. Plain node env, `fetch` mocked via `vi.spyOn`. Pool-Workers is not used — we only test pure resolve logic, not `caches.default`. |
-| `scripts/lib/cask_bumper.rb` | `CaskBumper::Bumper` base class. Subclasses override `#upstream` (returns `{ version:, md5: }`) and either `#worker_path` (CAPTCHA-gated vendor → proxied via Worker) or `#download_url` (public CDN → direct). Base handles HTTP, MD5 check, SHA256, cask file rewrite, `WORKER_BASE` constant. |
+| `scripts/lib/cask_bumper.rb` | `CaskBumper::Bumper` base class. Subclasses override `#upstream` (returns `{ version: }` plus optional `md5:`/`url:`) and either `#worker_path` (CAPTCHA-gated vendor → proxied via Worker) or `#download_url` (public CDN → direct). Optional `#validate_download(path)` hook for per-vendor post-download checks (e.g. nested zip structure). Base provides `#cask_url_template` helper that grep-reads the cask `url` line. |
 | `scripts/bump-<name>.rb` | Thin subclass per cask. Detects upstream version via the cask's LIST endpoint (no CAPTCHA), exits if unchanged, downloads (through the Worker for CAPTCHA-gated vendors, directly otherwise), verifies upstream MD5 when available, rewrites the cask. |
 | `.github/workflows/ci.yml` | macOS: `brew style --cask imbytecat/tap` + `brew audit --cask --online --tap imbytecat/tap`. Ubuntu: `rubocop scripts/` and worker `npm ci` + `typecheck` + `test`. Runs on push + PR. |
 | `.github/workflows/deploy-worker.yml` | `npm ci` → `typecheck` → `test` → `wrangler deploy`. Triggers on push to `main` touching `worker/**` or the workflow file itself. |
@@ -72,6 +72,12 @@ session hook will object otherwise.
 - Reads LIST endpoint (no CAPTCHA) first, compares to current cask version,
   returns early if unchanged. **Never download speculatively** — every
   wasteful fetch nudges the IP toward CAPTCHA on the download endpoint.
+- `Bumper#run` first line calls `#download_url` and discards the result —
+  this is a deliberate fail-fast contract check that raises
+  `NotImplementedError` if a subclass overrides neither `#worker_path` nor
+  `#download_url`. It is cheap (string interpolation or a memoized
+  `#upstream` call that would happen anyway) and protects against
+  no-op-when-already-up-to-date masking a broken subclass.
 - CAPTCHA-gated vendors download through the Worker, not direct from the
   vendor API; GH Actions runner IPs can also get CAPTCHA'd. Public-CDN
   vendors download directly (the Worker would add latency for no benefit).
@@ -80,12 +86,21 @@ session hook will object otherwise.
   least `{ version: }`; include `md5:` only if the LIST endpoint exposes
   one. Hash is duck-typed — base class reads `info[:md5]` and skips the
   check when absent.
+- For casks with non-trivial container shapes (e.g. `container nested:`),
+  the subclass overrides `#validate_download(path)` to spot-check the
+  downloaded archive's internal structure with `7z l` (available in
+  `flake.nix` and on GH Actions runners). Catches vendor reshape silently
+  passing the SHA round but breaking `brew install` later.
+- For direct-CDN vendors, the subclass compares the API-supplied URL
+  against the cask's `url` line via `#cask_url_template` + `String#sub` on
+  the literal `"\#{version}"` placeholder. Single source of truth —
+  changing the cask `url` automatically tightens the drift check.
 - `CaskBumper::Bumper#rewrite_cask` uses line-anchored regexes
   (`^\s*version\s+"…"` / `^\s*sha256\s+"…"`). The URL line contains
   `#{version}` literally, so it's never matched.
 - Subclass MUST stay thin: only `#upstream` + one of (`#worker_path` /
-  `#download_url`) + per-vendor constants. If you reach for a shared HTTP
-  helper, add it to the base.
+  `#download_url`) + optional `#validate_download` + per-vendor constants.
+  If you reach for a shared HTTP helper, add it to the base.
 
 ## Worker
 
