@@ -48,12 +48,12 @@ support.
 ## Development
 
 ```sh
-nix develop                # ruby_3_3 + rubocop + node_22 + just + curl + jq + 7z + libplist
+nix develop                # ruby_3_3 + rubocop + node_22 + just + curl + jq + 7z + libplist + actionlint + shellcheck
 just                       # list recipes
+cd worker && npm install   # once
 just bump ugreen-nas       # refresh one cask
-just style                 # rubocop on scripts/
-just worker-test           # vitest on worker/
-just worker-typecheck      # tsc --noEmit on worker/
+just style                 # rubocop scripts + actionlint workflows
+just worker-test           # typecheck + vitest
 ```
 
 ## Repo setup (one-time)

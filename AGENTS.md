@@ -30,7 +30,7 @@ in production due to CAPTCHA.**
 | `.github/workflows/bump.yml` | Weekly + manual. `discover` job uses `find scripts -name 'bump-*.rb' -printf '%f\n'` to build a matrix; `bump` job runs each in parallel, opens one PR per outdated cask. `workflow_dispatch` accepts an optional `cask` input to bump just one. |
 | `.github/dependabot.yml` | Weekly grouped updates for `github-actions` + worker `npm`. |
 | `flake.nix` | Dev shell: ruby_3_3 + rubocop, nodejs_22, just, curl, p7zip, libplist, jq, actionlint, shellcheck. |
-| `Justfile` | `set shell := ["bash", "-ceuo", "pipefail"]`. Recipes: `bump <name>` / `style` / `worker-dev` / `worker-deploy` / `worker-typecheck` / `worker-test`. |
+| `Justfile` | `set shell := ["bash", "-ceuo", "pipefail"]`. Recipes: `bump <name>` / `style` (rubocop + actionlint) / `worker-test` (typecheck + vitest) / `worker-dev` / `worker-deploy`. Worker recipes assume `npm install` was run once. |
 | `worker/wrangler.toml` | Pins `name = "homebrew-proxy"`, `main = "src/index.ts"`, `compatibility_date = "<recent>"`. Bump `compatibility_date` rather than dropping it. |
 | `.rubocop.yml` | `TargetRubyVersion: 3.3`, double-quote strings, `Layout/LineLength: 118`, `Style/Documentation: Enabled: false`, `scripts/**/*.rb` excluded from `Metrics/*` cops. |
 
