@@ -28,23 +28,25 @@ cask "ugreen-nas" do
   uninstall quit: "com.ugreen.pro.client"
 
   zap trash: [
-    "~/Library/Application Support/UGREEN_Nas_Pro",
     "~/Library/Application Support/com.ugreen.desktop",
     "~/Library/Application Support/com.ugreen.pro.client",
+    "~/Library/Application Support/UGREEN_Nas_Pro",
     "~/Library/Caches/com.ugreen.desktop",
     "~/Library/Caches/com.ugreen.pro.client",
+    "~/Library/Caches/com.ugreen.pro.client.helper*",
     "~/Library/Caches/com.ugreen.pro.client.ShipIt",
-    "~/Library/Caches/com.ugreen.pro.client.helper",
+    "~/Library/HTTPStorages/com.ugreen.desktop",
     "~/Library/HTTPStorages/com.ugreen.pro.client",
     "~/Library/HTTPStorages/com.ugreen.pro.client.binarycookies",
-    "~/Library/Logs/UGREEN_Nas_Pro",
     "~/Library/Logs/com.ugreen.desktop",
     "~/Library/Logs/com.ugreen.pro.client",
+    "~/Library/Logs/UGREEN_Nas_Pro",
     "~/Library/Preferences/com.ugreen.desktop.plist",
     "~/Library/Preferences/com.ugreen.pro.client.plist",
     "~/Library/Saved Application State/com.ugreen.desktop.savedState",
     "~/Library/Saved Application State/com.ugreen.pro.client.savedState",
     "~/Library/UGREEN_Nas_Pro",
+    "~/Library/WebKit/com.ugreen.desktop",
     "~/Library/WebKit/com.ugreen.pro.client",
   ]
 end
