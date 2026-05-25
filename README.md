@@ -1,50 +1,60 @@
 # imbytecat/homebrew-tap
 
-Personal Homebrew tap.
+Personal Homebrew tap for Chinese-vendor desktop / NAS clients whose
+download endpoints sit behind sticky per-IP CAPTCHAs. A small Cloudflare
+Worker in [`worker/`](worker/) resolves the vendor signed-URL APIs from
+edge IPs so `brew install` works from any home network.
 
 ## Install
 
 ```sh
-brew install --cask imbytecat/tap/ugreen-nas
+brew tap imbytecat/tap
+brew install --cask imbytecat/tap/<cask>
 ```
 
 ## Casks
 
 | Cask | Notes |
 | --- | --- |
-| [`ugreen-nas`](Casks/ugreen-nas.rb) | UGREEN NAS (绿联云) macOS client, Apple Silicon only. |
+| [`ugreen-nas`](Casks/ugreen-nas.rb) | UGREEN NAS (绿联云), Apple Silicon only. |
+
+## How it works
+
+Each cask's `url` points at the Worker, not the vendor:
+
+```
+brew install ──▶ Cask url (workers.dev/<vendor>/dl?…)
+                   │
+                   ▼
+              Cloudflare Worker  ──▶  vendor LIST/SIGN API  ──▶  signed CDN URL
+                   │                                                  │
+                   └────────── 302 redirect ─────────────────────────┘
+```
+
+- Cask pins `version` + `sha256` of the published build.
+- A per-cask bumper in [`scripts/`](scripts/) reads the vendor LIST endpoint
+  (no CAPTCHA), exits if unchanged, downloads through the Worker, verifies
+  upstream MD5, and rewrites the cask. A weekly GitHub Action runs every
+  bumper in a matrix and opens one PR per outdated cask.
+- The Worker caches each signed URL for 5 min (Cloudflare `caches.default`)
+  so hot installs share a single upstream call.
+
+See [`worker/README.md`](worker/README.md) for Worker deploy steps and
+[`AGENTS.md`](AGENTS.md) for how to add a new cask.
+
+Intel x86 is intentionally not packaged — Homebrew is winding down Intel
+support.
 
 ## Development
 
 ```sh
-nix develop          # ruby_3_3 + rubocop + just + curl
-just bump-ugreen-nas # refresh version + sha256 from upstream API
-just style           # rubocop on scripts
+nix develop                # ruby_3_3 + rubocop + node_22 + just + curl + jq + 7z + libplist
+just                       # list recipes
+just bump ugreen-nas       # refresh one cask
+just style                 # rubocop on scripts/
+just worker-test           # vitest on worker/
+just worker-typecheck      # tsc --noEmit on worker/
 ```
-
-## Why a Cloudflare Worker proxy
-
-UGREEN's CDN only serves the macOS DMG via short-lived (~8 min) signed URLs
-fetched from `api-zh.ugnas.com`. That endpoint enforces a sticky per-IP
-CAPTCHA, so a normal `brew install` from a home network gets blocked after
-a few requests.
-
-[`worker/`](worker/) holds a tiny Cloudflare Worker (`homebrew-proxy`) that
-sits in front of the API: end users hit a stable
-`https://homebrew-proxy.<sub>.workers.dev/ugnas/dl?id=515` URL, Cloudflare's
-edge IPs talk to UGREEN (and absorb the rate limit), and the Worker
-302-redirects to the freshly-signed CDN URL. Signed URLs are cached for
-5 min so multiple installs in a window share a single API call.
-
-The cask points at the Worker URL with a pinned `sha256` of the published
-build; `scripts/bump-ugreen-nas.rb` refreshes the version + sha when upstream
-cuts a release.
-
-See [`worker/README.md`](worker/README.md) for deploy steps.
-
-Intel x86 is intentionally not packaged here — Homebrew is winding down Intel
-support. Grab the Intel `.dmg` from <https://www.ugnas.com/download/> if you
-need it.
 
 ## Repo setup (one-time)
 
