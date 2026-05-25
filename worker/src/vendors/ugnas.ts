@@ -29,7 +29,10 @@ ugnas.get("/dl", (c) => {
   if (!id || !ALLOWED_IDS.has(id)) {
     return c.text(`Invalid or unknown id: ${id ?? "<missing>"}`, 400);
   }
-  const v = c.req.query("v") ?? "latest";
+  const v = c.req.query("v");
+  if (!v) {
+    return c.text("Missing required query: v", 400);
+  }
   return redirectProxy(c, {
     cacheKey: `ugnas/${id}/${v}`,
     resolve: () => resolveDownloadUrl(id),

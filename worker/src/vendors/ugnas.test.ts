@@ -38,12 +38,17 @@ describe("resolveDownloadUrl", () => {
 
 describe("ugnas Hono app", () => {
   it("rejects unknown id with 400", async () => {
-    const res = await ugnas.request("/dl?id=516");
+    const res = await ugnas.request("/dl?id=516&v=1.0.0");
     expect(res.status).toBe(400);
   });
 
   it("rejects missing id with 400", async () => {
     const res = await ugnas.request("/dl");
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects missing v with 400", async () => {
+    const res = await ugnas.request("/dl?id=515");
     expect(res.status).toBe(400);
   });
 });

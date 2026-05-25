@@ -16,7 +16,7 @@ class UgreenNasBumper < CaskBumper::Bumper
   private
 
   def worker_path
-    "/ugnas/dl?id=#{APP_ID}"
+    "/ugnas/dl?id=#{APP_ID}&v=#{upstream.fetch(:version)}"
   end
 
   def upstream
