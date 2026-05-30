@@ -4,7 +4,7 @@
 require_relative "lib/cask_bumper"
 
 class UgreenNasBumper < CaskBumper::Bumper
-  LIST_API = "https://api.ugnas.com/api/system/v3/sa/apk"
+  LIST_API = "https://api-zh.ugnas.com/api/system/v3/sa/apk"
   APP_NO = "com.ugreenNasPro.mac"
   ARM_CLIENT_BIT = 3
   APP_ID = 515

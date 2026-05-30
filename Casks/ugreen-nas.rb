@@ -10,7 +10,7 @@ cask "ugreen-nas" do
   homepage "https://www.ugnas.com/"
 
   livecheck do
-    url "https://api.ugnas.com/api/system/v3/sa/apk"
+    url "https://api-zh.ugnas.com/api/system/v3/sa/apk"
     strategy :json do |json|
       json.dig("data", "appSoftVers")
           &.find { |item| item["appNo"] == "com.ugreenNasPro.mac" && item["clientBit"].to_i == 3 }
