@@ -7,7 +7,6 @@ class UgreenNasBumper < CaskBumper::Bumper
   LIST_API = "https://api-zh.ugnas.com/api/system/v3/sa/apk"
   APP_NO = "com.ugreenNasPro.mac"
   ARM_CLIENT_BIT = 3
-  APP_ID = 515
 
   def initialize
     super("ugreen-nas")
@@ -16,7 +15,7 @@ class UgreenNasBumper < CaskBumper::Bumper
   private
 
   def worker_path
-    "/ugnas/dl?id=#{APP_ID}&v=#{upstream.fetch(:version)}"
+    "/ugnas/dl?v=#{upstream.fetch(:version)}"
   end
 
   def upstream

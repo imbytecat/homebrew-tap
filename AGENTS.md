@@ -24,7 +24,7 @@ production due to CAPTCHA.**
 | Path | Owns |
 | --- | --- |
 | `Casks/<name>.rb` | The cask. Pure declarative DSL. No `require`, no custom class, URL must include `#{version}` interpolation. |
-| `worker/` | Cloudflare Worker. TS + Hono. Each new vendor = a Hono sub-app under `worker/src/vendors/<vendor>.ts`, mounted in `worker/src/index.ts`. The generic `redirectProxy(c, { resolve, cacheKey, ttl })` helper in `worker/src/lib/proxy.ts` handles `caches.default` + 302; vendor modules just export a `resolveDownloadUrl(id)` and a `Hono` sub-app. `USER_AGENT` is the one shared constant. |
+| `worker/` | Cloudflare Worker. TS + Hono. Each new vendor = a Hono sub-app under `worker/src/vendors/<vendor>.ts`, mounted in `worker/src/index.ts`. The generic `redirectProxy(c, { resolve, cacheKey, ttl })` helper in `worker/src/lib/proxy.ts` handles `caches.default` + 302; vendor modules just export a version-based `resolveDownloadUrl(...)` and a `Hono` sub-app. `USER_AGENT` is the one shared constant. |
 | `worker/src/vendors/*.test.ts` | Vitest tests for each vendor's resolver. Plain node env, `fetch` mocked via `vi.spyOn`. Pool-Workers is not used — we only test pure resolve logic, not `caches.default`. |
 | `scripts/lib/cask_bumper.rb` | `CaskBumper::Bumper` base class. Subclasses override `#upstream` (returns `{ version: }` plus optional `md5:`/`url:`) and either `#worker_path` (CAPTCHA-gated vendor → proxied via Worker) or `#download_url` (public CDN → direct). Optional `#validate_download(path)` hook for per-vendor post-download checks (e.g. nested zip structure). Base provides `#cask_url_template` helper that grep-reads the cask `url` line. |
 | `scripts/bump-<name>.rb` | Thin subclass per cask. Detects upstream version via the cask's LIST endpoint (no CAPTCHA), exits if unchanged, downloads (through the Worker for CAPTCHA-gated vendors, directly otherwise), verifies upstream MD5 when available, rewrites the cask. |
@@ -198,7 +198,7 @@ anything still on `node20`.
      directly. Skip steps 4–5. Bumper subclass overrides `#download_url`.
    - **CAPTCHA-gated** → continue with steps 4–5.
 4. **Worker vendor module**: add `worker/src/vendors/<vendor>.ts` that
-   exports `resolveDownloadUrl(id)` and a `Hono` sub-app, mount it under a
+   exports `resolveDownloadUrl(...)` and a `Hono` sub-app, mount it under a
    vendor-named path in `worker/src/index.ts`. Use `redirectProxy` from
    `worker/src/lib/proxy.ts` and the shared `USER_AGENT` constant.
 5. **Worker tests**: drop a `worker/src/vendors/<vendor>.test.ts` mirroring

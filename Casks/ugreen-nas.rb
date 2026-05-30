@@ -1,8 +1,8 @@
 cask "ugreen-nas" do
-  version "1.15.0.77685"
-  sha256 "56b49d6e516657caaf7c97eb75ab2352bbd7ad962e2c8e01fdea5fdd096f0f62"
+  version "1.16.0.77937"
+  sha256 "d6941639a6aac14848bcb8ed93da7eb2686b826bced58d1a63959f51575d34ce"
 
-  url "https://homebrew-proxy.imbytecat.workers.dev/ugnas/dl?id=515&v=#{version}",
+  url "https://homebrew-proxy.imbytecat.workers.dev/ugnas/dl?v=#{version}",
       verified: "homebrew-proxy.imbytecat.workers.dev/"
   name "UGREEN NAS"
   name "绿联云"
