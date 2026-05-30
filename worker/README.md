@@ -9,13 +9,13 @@ CAPTCHAs on vendor APIs.
 
 - TypeScript on Workers runtime, [Hono](https://hono.dev) for routing
 - Wrangler + vitest pinned in `package.json` (lockfile required for `npm ci`)
-- [`redirectProxy`](src/lib/proxy.ts) — vendor modules supply `resolveDownloadUrl(id)` + cache key + TTL
+- [`redirectProxy`](src/lib/proxy.ts) — vendor modules supply `resolveDownloadUrl(version)` + cache key + TTL
 
 ## Routes
 
 | Route | Vendor | Notes |
 | --- | --- | --- |
-| `GET /ugnas/dl?id=<appId>&v=<version>` | UGREEN | Allowed ids: `515` (mac arm64). `v` is the cask-pinned version; the Worker caches the resolved signed URL per `id/v` for 5 min. |
+| `GET /ugnas/dl?v=<version>` | UGREEN | Worker reads the LIST API, derives the current macOS Apple Silicon appSoftVers id, then caches the resolved signed URL per `v` for 5 min. |
 
 ## Local dev
 
