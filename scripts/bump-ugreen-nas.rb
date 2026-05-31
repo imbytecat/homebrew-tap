@@ -9,6 +9,7 @@ class UgreenNasBumper < CaskBumper::Bumper
   ARM_CLIENT_BIT = 3
   EXPECTED_URL_PATTERN =
     %r{\A#{Regexp.escape(CaskBumper::WORKER_BASE)}/ugnas/dl\?v=\#\{version\}&id=\d+\z}
+  STRICT_POSITIVE_INT = /\A[1-9]\d*\z/
 
   def initialize
     super("ugreen-nas")
@@ -33,8 +34,9 @@ class UgreenNasBumper < CaskBumper::Bumper
              abort("no Apple Silicon macOS build found")
       version = item["verName"]&.delete_prefix("v") || abort("missing verName")
       raw_id = item["id"] || abort("missing id")
-      id = Integer(raw_id.to_s, exception: false) || abort("non-integer id: #{raw_id.inspect}")
-      abort "non-positive id: #{id}" unless id.positive?
+      id_str = raw_id.to_s
+      abort "id is not a strict positive decimal: #{raw_id.inspect}" unless id_str.match?(STRICT_POSITIVE_INT)
+      id = id_str.to_i
       { version: version, md5: item["md5"], id: id }
     end
   end
