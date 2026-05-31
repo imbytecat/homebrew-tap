@@ -108,9 +108,12 @@ session hook will object otherwise.
   helper), parses the version out of the `Location:` URL with a regex,
   and drift-checks against `#cask_url_template` using `String#gsub` —
   needed when the cask `url` has multiple `#{version}` interpolations
-  (see `bump-roxy-browser.rb`). When both a JSON version endpoint and a
-  HEAD redirect exist, the bumper reads the JSON first and asserts the
-  two agree (catches livecheck-vs-download divergence).
+  (see `bump-roxy-browser.rb`). **Prefer a single source of truth that
+  the bump CI runner can reliably reach.** Cross-checking a second
+  source (e.g. JSON `macVersion` + HEAD `Location`) only pays off when
+  both endpoints are reachable from `bump.yml`'s runner; an unreachable
+  cross-check endpoint turns into a guaranteed bump failure, so verify
+  reachability from a US/EU IP before relying on a `.cn`-hosted endpoint.
 - Worker-proxied casks pin **vendor artifact id** in the cask URL when
   the upstream LIST API only exposes the current version. Bumper's
   `#upstream` returns `id:`, `#worker_path` includes `&id=<id>`, and
