@@ -48,6 +48,9 @@ production due to CAPTCHA.**
 - **`zap trash:` array is sorted case-insensitively** by the
   `Cask/ArrayAlphabetization` cop (`a.downcase <=> b.downcase`). ASCII
   sort (`U` < `c`) is wrong; `downcase` (`u` > `c`) is right.
+- **`uninstall` keys follow a fixed order** enforced by
+  `Cask/UninstallMethodsOrder`: `quit` before `pkgutil` before
+  `delete`/`trash`. Alphabetical or "convenient" ordering fails.
 - **`depends_on macos:` uses the symbol form**, not a comparison string.
   `Homebrew/OSDependsOn` cop rejects `">= :big_sur"`; use `:big_sur`.
 - **Don't write Ruby logic in the cask**. Custom `using:` classes and
@@ -95,6 +98,12 @@ session hook will object otherwise.
   against the cask's `url` line via `#cask_url_template` + `String#sub` on
   the literal `"\#{version}"` placeholder. Single source of truth —
   changing the cask `url` automatically tightens the drift check.
+- If a vendor exposes only a `-latest` redirect endpoint (no JSON URL
+  field), the bumper does HEAD via `#fetch_redirect_location` (base
+  helper), parses the version out of the `Location:` URL with a regex,
+  and drift-checks against `#cask_url_template` using `String#gsub` —
+  needed when the cask `url` has multiple `#{version}` interpolations
+  (see `bump-roxy-browser.rb`).
 - `CaskBumper::Bumper#rewrite_cask` uses line-anchored regexes
   (`^\s*version\s+"…"` / `^\s*sha256\s+"…"`). The URL line contains
   `#{version}` literally, so it's never matched.
@@ -221,9 +230,12 @@ the *what*.
 
 - **`auto_updates true` kept** — UGREEN ships its own updater inside the
   app, brew won't fight it.
-- **No `pkgutil:` / `launchctl:` / `signal:` in `uninstall`/`zap`** — this
-  is a plain `.app` bundle, no pkg receipt, no launchd agents observed.
-  Don't cargo-cult these.
+- **No `pkgutil:` / `launchctl:` / `signal:` in `.app` casks** —
+  `ugreen-nas` and `doubao-ime` ship plain `.app` bundles (DMG / nested
+  zip), so there's no pkg receipt to drop and no launchd agents observed.
+  Don't cargo-cult these onto `.app` casks. Real `.pkg` casks
+  (`roxy-browser`) DO require `pkgutil:` to clear the install receipt
+  on uninstall.
 - **No `--new` flag on `brew audit`** in CI. See above.
 - **No `@cloudflare/vitest-pool-workers`** — tests don't need the Workers
   runtime to validate the pure resolver logic. If you ever want to test
