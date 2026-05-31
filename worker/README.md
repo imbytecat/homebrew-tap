@@ -15,7 +15,7 @@ CAPTCHAs on vendor APIs.
 
 | Route | Vendor | Notes |
 | --- | --- | --- |
-| `GET /ugnas/dl?v=<version>` | UGREEN | Worker reads the LIST API, derives the current macOS Apple Silicon appSoftVers id, then caches the resolved signed URL per `v` for 5 min. |
+| `GET /ugnas/dl?v=<version>&id=<id>` | UGREEN | When `id` is supplied (current `Casks/ugreen-nas.rb`), Worker calls the vendor's by-id TEMP_LINK endpoint directly — no LIST round-trip. When `id` is missing (legacy / not-yet-rebumped caller), Worker falls back to LIST + version match for backward compat. Signed URL cached 120 s per `id` (or per `v` on the fallback path). |
 
 ## Local dev
 
@@ -52,6 +52,7 @@ typecheck, vitest, then `wrangler deploy` on every push to `main` touching
 
 ## Cache
 
-Each signed URL is cached 5 min in `caches.default` (UGREEN signatures live
-~8 min). Hot keys share one upstream call so end users almost never trigger
-upstream CAPTCHA even at Worker level.
+Each signed URL is cached 120 s in `caches.default` (UGREEN signatures live
+~8 min, so even slow installs finish before expiry). Hot keys share one
+upstream call so end users almost never trigger upstream CAPTCHA even at
+Worker level.

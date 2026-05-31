@@ -42,7 +42,7 @@ Casks whose vendor CDN is publicly reachable (e.g. `doubao-ime`) point
   CAPTCHA-gated vendors, directly otherwise), verifies upstream MD5 when
   available, and rewrites the cask. A weekly GitHub Action runs every
   bumper in a matrix and opens one PR per outdated cask.
-- The Worker caches each signed URL for 5 min (Cloudflare `caches.default`)
+- The Worker caches each signed URL for 2 min (Cloudflare `caches.default`)
   so hot installs share a single upstream call.
 
 See [`worker/README.md`](worker/README.md) for Worker deploy steps and

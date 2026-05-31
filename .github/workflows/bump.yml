@@ -39,7 +39,7 @@ jobs:
   bump:
     needs: discover
     if: needs.discover.outputs.casks != '[]'
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     permissions:
       contents: write
       pull-requests: write

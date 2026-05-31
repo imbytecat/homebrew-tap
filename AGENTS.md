@@ -138,8 +138,9 @@ session hook will object otherwise.
   the dev shell, otherwise `just worker-*` recipes fail.
 - `caches.default` (Cloudflare Cache API) is used instead of KV — no
   bindings to manage. TTL is 120 s for UGREEN — well under the observed
-  ~8 min signature lifetime, and short enough that an `id`-pinned cask
-  re-serves a fresh signed URL within a few minutes of upstream rotating.
+  ~8 min signature lifetime, so a cached signed URL is unlikely to expire
+  mid-install. Tighter than the previous 5 min to leave more headroom for
+  retries and slow connections.
 - Public Worker has no auth — cask URLs need to be hit by any user's brew.
   Abuse model: external attacker can fan-out vendor LIST/SIGN calls from
   CF edge. Mitigation lives in the Cloudflare dashboard, not in code:
@@ -177,10 +178,17 @@ session hook will object otherwise.
   workflow edit needed. **Don't use `ls glob` here** — shellcheck SC2012
   fires (see "brew style internals" below).
 - `bump.yml` sets `concurrency: group: bump-${{ matrix.cask }}` with
-  `cancel-in-progress: false` so simultaneous schedule + manual dispatch
-  on the same cask queue rather than racing on the fixed
-  `bot/bump-<cask>` branch (`create-pull-request` action would otherwise
-  push to the same ref and corrupt the PR).
+  `cancel-in-progress: false` so a simultaneous schedule + manual dispatch
+  on the same cask serialize on the fixed `bot/bump-<cask>` branch
+  (`create-pull-request` action would otherwise push to the same ref and
+  corrupt the PR). GitHub keeps at most 1 running + 1 pending per group;
+  a third concurrent run replaces the pending one — latest-pending-wins,
+  not infinite queue.
+- `bump.yml` job runs on `macos-latest`, not `ubuntu-latest`. Required
+  for `.pkg` cask audits that shell out to `pkgutil --expand-full`
+  (macOS only). Ubuntu would work for `doubao-ime` and `ugreen-nas`
+  alone but the matrix shares a single `runs-on`, and macOS has every
+  tool the bumpers need including `curl`, `7z`, and `pkgutil`.
 - The deploy workflow explicitly fails with a clear error when
   `CLOUDFLARE_API_TOKEN` is missing — don't remove that check, the
   underlying `wrangler` failure is unreadable.

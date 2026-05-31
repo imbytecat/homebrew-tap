@@ -7,6 +7,8 @@ class UgreenNasBumper < CaskBumper::Bumper
   LIST_API = "https://api-zh.ugnas.com/api/system/v3/sa/apk"
   APP_NO = "com.ugreenNasPro.mac"
   ARM_CLIENT_BIT = 3
+  EXPECTED_URL_PATTERN =
+    %r{\A#{Regexp.escape(CaskBumper::WORKER_BASE)}/ugnas/dl\?v=\#\{version\}&id=\d+\z}
 
   def initialize
     super("ugreen-nas")
@@ -19,7 +21,9 @@ class UgreenNasBumper < CaskBumper::Bumper
   end
 
   def cask_url_after_bump
-    cask_url_template.sub(/\bid=\d+/, "id=#{upstream.fetch(:id)}")
+    current = cask_url_template
+    abort "UGREEN cask URL shape drift: #{current.inspect}" unless current.match?(EXPECTED_URL_PATTERN)
+    current.sub(/\bid=\d+/, "id=#{upstream.fetch(:id)}")
   end
 
   def upstream
@@ -28,7 +32,8 @@ class UgreenNasBumper < CaskBumper::Bumper
       item = items.find { |i| i["appNo"] == APP_NO && i["clientBit"].to_i == ARM_CLIENT_BIT } ||
              abort("no Apple Silicon macOS build found")
       version = item["verName"]&.delete_prefix("v") || abort("missing verName")
-      id = item["id"]&.to_i || abort("missing id")
+      raw_id = item["id"] || abort("missing id")
+      id = Integer(raw_id.to_s, exception: false) || abort("non-integer id: #{raw_id.inspect}")
       abort "non-positive id: #{id}" unless id.positive?
       { version: version, md5: item["md5"], id: id }
     end
