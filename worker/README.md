@@ -9,7 +9,7 @@ CAPTCHAs on vendor APIs.
 
 - TypeScript on Workers runtime, [Hono](https://hono.dev) for routing
 - Wrangler + vitest pinned in `package.json` (lockfile required for `npm ci`)
-- [`redirectProxy`](src/lib/proxy.ts) — vendor modules supply `resolveDownloadUrl(version)` + cache key + TTL
+- [`redirectProxy`](src/lib/proxy.ts) — vendor modules supply one or more resolver functions (by version, by pinned artifact id, etc.) + cache key + TTL
 
 ## Routes
 

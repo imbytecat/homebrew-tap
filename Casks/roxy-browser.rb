@@ -10,10 +10,9 @@ cask "roxy-browser" do
   homepage "https://roxybrowser.cn/"
 
   livecheck do
-    url "https://roxybrowser.cn/app_statistics/get_official_website_version_data_config"
-    strategy :json do |json|
-      json.dig("data", "macVersion")
-    end
+    url "https://dl.roxybrowser.com/app-download/macOS-apple-latest"
+    regex(%r{/macOS/apple/(\d+(?:\.\d+)+)/RoxyBrowser_apple_}i)
+    strategy :header_match
   end
 
   auto_updates true

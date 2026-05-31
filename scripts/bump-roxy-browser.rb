@@ -5,7 +5,6 @@ require "open3"
 require_relative "lib/cask_bumper"
 
 class RoxyBrowserBumper < CaskBumper::Bumper
-  VERSION_API = "https://roxybrowser.cn/app_statistics/get_official_website_version_data_config"
   LATEST_URL = "https://dl.roxybrowser.com/app-download/macOS-apple-latest"
   URL_PATTERN = %r{/macOS/apple/([^/]+)/RoxyBrowser_apple_[^/]+\.pkg\z}
   KNOWN_INSTALL_DOMAINS = %w[
@@ -22,11 +21,9 @@ class RoxyBrowserBumper < CaskBumper::Bumper
 
   def upstream
     @upstream ||= begin
-      data = fetch_json(VERSION_API).fetch("data") { abort "bad version API payload" }
-      version = data["macVersion"] || abort("missing macVersion")
       location = fetch_redirect_location(LATEST_URL)
       m = location.match(URL_PATTERN) || abort("can't parse version from Location: #{location}")
-      abort "version source disagreement: JSON=#{version}, Location=#{m[1]}" if m[1] != version
+      version = m[1]
       expected = cask_url_template.gsub("\#{version}", version)
       abort "upstream URL drifted: got #{location}, expected #{expected}" if location != expected
       { version: version, url: location }
