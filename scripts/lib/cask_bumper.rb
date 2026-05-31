@@ -99,5 +99,18 @@ module CaskBumper
       abort "HTTP #{res.code} #{url}: #{res.body[0, 200]}" unless res.is_a?(Net::HTTPSuccess)
       JSON.parse(res.body)
     end
+
+    def fetch_redirect_location(url)
+      uri = URI(url)
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = uri.scheme == "https"
+      http.open_timeout = 15
+      http.read_timeout = 30
+      req = Net::HTTP::Head.new(uri.request_uri)
+      req["User-Agent"] = "homebrew-tap-bumper/1.0"
+      res = http.request(req)
+      abort "expected redirect from #{url}, got HTTP #{res.code}" unless res.is_a?(Net::HTTPRedirection)
+      res["location"] || abort("missing Location header from #{url}")
+    end
   end
 end
