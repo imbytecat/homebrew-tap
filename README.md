@@ -37,8 +37,9 @@ Casks whose vendor CDN is publicly reachable (e.g. `doubao-ime`) point
 `url` straight at the CDN and skip the Worker.
 
 - Cask pins `version` + `sha256` of the published build.
-- A per-cask bumper in [`scripts/`](scripts/) reads the vendor LIST endpoint
-  (no CAPTCHA), exits if unchanged, downloads (through the Worker for
+- A per-cask bumper in [`scripts/`](scripts/) reads the vendor's version
+  source (LIST endpoint, version JSON, or `-latest` HEAD redirect — no
+  CAPTCHA), exits if unchanged, downloads (through the Worker for
   CAPTCHA-gated vendors, directly otherwise), verifies upstream MD5 when
   available, and rewrites the cask. A weekly GitHub Action runs every
   bumper in a matrix and opens one PR per outdated cask.
