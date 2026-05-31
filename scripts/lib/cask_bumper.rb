@@ -13,8 +13,12 @@ module CaskBumper
   # Subclasses override #upstream (returns at least { version: } plus optional
   # md5: / url: / other per-vendor keys) plus either #worker_path (vendor
   # requires CAPTCHA-proxied download) or #download_url (vendor exposes a
-  # public CDN URL that brew can hit directly). Optional #validate_download
-  # (path) hook for per-vendor post-download checks (e.g. nested archive).
+  # public CDN URL that brew can hit directly). Optional hooks:
+  # * #validate_download(path) for per-vendor post-download checks (nested
+  #   archive structure, pkg postinstall script audit, etc.)
+  # * #cask_url_after_bump returns the URL line to write into the cask;
+  #   default leaves the template unchanged. Override when bump must also
+  #   rewrite non-version placeholders (e.g. UGREEN's pinned vendor `id=`).
   class Bumper
     def initialize(name)
       @name = name
@@ -27,7 +31,7 @@ module CaskBumper
       info = upstream
       version = info.fetch(:version)
       current = current_cask_version
-      if current == version
+      if current == version && cask_url_template == cask_url_after_bump
         warn "[#{@name}] already at #{version}"
         return
       end
@@ -50,6 +54,10 @@ module CaskBumper
 
     def download_url
       path = worker_path || raise(NotImplementedError, "override #worker_path or #download_url")
+      template = cask_url_template
+      unless template.start_with?(WORKER_BASE)
+        abort "cask URL must start with #{WORKER_BASE} for proxied casks: #{template}"
+      end
       "#{WORKER_BASE}#{path}"
     end
 
@@ -58,7 +66,13 @@ module CaskBumper
     end
 
     def cask_url_template
-      File.read(@cask_path)[/^\s*url\s+"([^"]+)"/, 1] || abort("can't read url from #{@cask_path}")
+      template = File.read(@cask_path)[/^\s*url\s+"([^"]+)"/, 1] || abort("can't read url from #{@cask_path}")
+      abort "cask URL must contain literal \#{version}: #{template}" unless template.include?("\#{version}")
+      template
+    end
+
+    def cask_url_after_bump
+      cask_url_template
     end
 
     def download_and_sha256(expected_md5: nil)
@@ -81,6 +95,8 @@ module CaskBumper
 
     def rewrite_cask(version:, sha256:)
       cask = File.read(@cask_path)
+      new_url = cask_url_after_bump
+      cask.sub!(/^(\s*url\s+)"[^"]+"/, "\\1\"#{new_url}\"")
       cask.sub!(/^(\s*version\s+)"[^"]+"/, "\\1\"#{version}\"")
       cask.sub!(/^(\s*sha256\s+)"[0-9a-f]{64}"/, "\\1\"#{sha256}\"")
       File.write(@cask_path, cask)

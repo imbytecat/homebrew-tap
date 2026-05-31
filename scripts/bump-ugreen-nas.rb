@@ -15,7 +15,11 @@ class UgreenNasBumper < CaskBumper::Bumper
   private
 
   def worker_path
-    "/ugnas/dl?v=#{upstream.fetch(:version)}"
+    "/ugnas/dl?v=#{upstream.fetch(:version)}&id=#{upstream.fetch(:id)}"
+  end
+
+  def cask_url_after_bump
+    cask_url_template.sub(/\bid=\d+/, "id=#{upstream.fetch(:id)}")
   end
 
   def upstream
@@ -24,7 +28,9 @@ class UgreenNasBumper < CaskBumper::Bumper
       item = items.find { |i| i["appNo"] == APP_NO && i["clientBit"].to_i == ARM_CLIENT_BIT } ||
              abort("no Apple Silicon macOS build found")
       version = item["verName"]&.delete_prefix("v") || abort("missing verName")
-      { version: version, md5: item["md5"] }
+      id = item["id"]&.to_i || abort("missing id")
+      abort "non-positive id: #{id}" unless id.positive?
+      { version: version, md5: item["md5"], id: id }
     end
   end
 end

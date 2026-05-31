@@ -17,7 +17,7 @@ brew install --cask imbytecat/tap/<cask>
 | Cask | Notes |
 | --- | --- |
 | [`doubao-ime`](Casks/doubao-ime.rb) | Doubao Input Method (豆包输入法). Installs to `~/Library/Input Methods`. |
-| [`roxy-browser`](Casks/roxy-browser.rb) | RoxyBrowser (Roxy浏览器). Apple Silicon only, `.pkg` installer. |
+| [`roxy-browser`](Casks/roxy-browser.rb) | RoxyBrowser (Roxy浏览器). Apple Silicon only, `.pkg` installer with vendor postinstall script that POSTs an install-completion event to `*.gate.roxybrowser.cn/.net` (bumper audits the script for unknown hosts). |
 | [`ugreen-nas`](Casks/ugreen-nas.rb) | UGREEN NAS (绿联云). |
 
 ## How it works

@@ -47,6 +47,9 @@ jobs:
       fail-fast: false
       matrix:
         cask: ${{ fromJSON(needs.discover.outputs.casks) }}
+    concurrency:
+      group: bump-${{ matrix.cask }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v6
       - uses: ruby/setup-ruby@v1

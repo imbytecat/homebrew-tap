@@ -26,7 +26,7 @@ production due to CAPTCHA.**
 | `Casks/<name>.rb` | The cask. Pure declarative DSL. No `require`, no custom class, URL must include `#{version}` interpolation. |
 | `worker/` | Cloudflare Worker. TS + Hono. Each new vendor = a Hono sub-app under `worker/src/vendors/<vendor>.ts`, mounted in `worker/src/index.ts`. The generic `redirectProxy(c, { resolve, cacheKey, ttl })` helper in `worker/src/lib/proxy.ts` handles `caches.default` + 302; vendor modules just export a version-based `resolveDownloadUrl(...)` and a `Hono` sub-app. `USER_AGENT` is the one shared constant. |
 | `worker/src/vendors/*.test.ts` | Vitest tests for each vendor's resolver. Plain node env, `fetch` mocked via `vi.spyOn`. Pool-Workers is not used — we only test pure resolve logic, not `caches.default`. |
-| `scripts/lib/cask_bumper.rb` | `CaskBumper::Bumper` base class. Subclasses override `#upstream` (returns `{ version: }` plus optional `md5:`/`url:`) and either `#worker_path` (CAPTCHA-gated vendor → proxied via Worker) or `#download_url` (public CDN → direct). Optional `#validate_download(path)` hook for per-vendor post-download checks (e.g. nested zip structure). Base provides `#cask_url_template` helper that grep-reads the cask `url` line. |
+| `scripts/lib/cask_bumper.rb` | `CaskBumper::Bumper` base class. Subclasses override `#upstream` (returns `{ version: }` plus optional `md5:`/`url:`/`id:`/per-vendor keys) and either `#worker_path` (CAPTCHA-gated → proxied via Worker) or `#download_url` (public CDN → direct). Optional hooks: `#validate_download(path)` for post-download archive/pkg checks, `#cask_url_after_bump` to rewrite non-version placeholders in the cask `url` line (e.g. UGREEN's pinned vendor `id=`). Base enforces three invariants automatically: cask `url` must contain literal `\#{version}`; proxied cask `url` must start with `WORKER_BASE`; URL line is rewritten by `#rewrite_cask` from `#cask_url_after_bump` on every bump. Base provides `#cask_url_template`, `#fetch_json`, and `#fetch_redirect_location` helpers. |
 | `scripts/bump-<name>.rb` | Thin subclass per cask. Detects upstream version via the cask's LIST endpoint (no CAPTCHA), exits if unchanged, downloads (through the Worker for CAPTCHA-gated vendors, directly otherwise), verifies upstream MD5 when available, rewrites the cask. |
 | `.github/workflows/ci.yml` | macOS: `brew style --cask imbytecat/tap` + `brew audit --cask --online --tap imbytecat/tap`. Ubuntu: `rubocop scripts/` and worker `npm ci` + `typecheck` + `test`. Runs on push + PR. |
 | `.github/workflows/deploy-worker.yml` | `npm ci` → `typecheck` → `test` → `wrangler deploy`. Triggers on push to `main` touching `worker/**` or the workflow file itself. |
@@ -72,9 +72,11 @@ session hook will object otherwise.
 
 ## Bump script invariants
 
-- Reads LIST endpoint (no CAPTCHA) first, compares to current cask version,
-  returns early if unchanged. **Never download speculatively** — every
-  wasteful fetch nudges the IP toward CAPTCHA on the download endpoint.
+- Reads upstream (LIST endpoint, version JSON, or HEAD redirect — anything
+  that's not the binary download) first, compares to current cask version
+  **and** current cask `url`, returns early if both are unchanged. **Never
+  download the binary speculatively** — every wasteful fetch nudges the IP
+  toward CAPTCHA on the download endpoint.
 - `Bumper#run` first line calls `#download_url` and discards the result —
   this is a deliberate fail-fast contract check that raises
   `NotImplementedError` if a subclass overrides neither `#worker_path` nor
@@ -90,10 +92,13 @@ session hook will object otherwise.
   one. Hash is duck-typed — base class reads `info[:md5]` and skips the
   check when absent.
 - For casks with non-trivial container shapes (e.g. `container nested:`),
-  the subclass overrides `#validate_download(path)` to spot-check the
-  downloaded archive's internal structure with `7z l` (available in
-  `flake.nix` and on GH Actions runners). Catches vendor reshape silently
-  passing the SHA round but breaking `brew install` later.
+  or `.pkg` casks where the postinstall script makes network calls, the
+  subclass overrides `#validate_download(path)` to spot-check the
+  downloaded archive. Examples: `bump-doubao-ime.rb` uses `7z l -slt`
+  against a nested-zip path template; `bump-roxy-browser.rb` does
+  `pkgutil --expand-full` then scans `**/Scripts/*` for unknown HTTP
+  hosts against a per-vendor whitelist (catches vendor adding new
+  install-time telemetry endpoints between SHA-rounds).
 - For direct-CDN vendors, the subclass compares the API-supplied URL
   against the cask's `url` line via `#cask_url_template` + `String#sub` on
   the literal `"\#{version}"` placeholder. Single source of truth —
@@ -103,13 +108,25 @@ session hook will object otherwise.
   helper), parses the version out of the `Location:` URL with a regex,
   and drift-checks against `#cask_url_template` using `String#gsub` —
   needed when the cask `url` has multiple `#{version}` interpolations
-  (see `bump-roxy-browser.rb`).
+  (see `bump-roxy-browser.rb`). When both a JSON version endpoint and a
+  HEAD redirect exist, the bumper reads the JSON first and asserts the
+  two agree (catches livecheck-vs-download divergence).
+- Worker-proxied casks pin **vendor artifact id** in the cask URL when
+  the upstream LIST API only exposes the current version. Bumper's
+  `#upstream` returns `id:`, `#worker_path` includes `&id=<id>`, and
+  `#cask_url_after_bump` rewrites the `id=\d+` placeholder. This keeps
+  old casks installable even after upstream cuts a newer release: the
+  Worker hits the vendor's by-id endpoint and skips LIST entirely. See
+  `bump-ugreen-nas.rb` + `Casks/ugreen-nas.rb`'s `?v=#{version}&id=536`.
 - `CaskBumper::Bumper#rewrite_cask` uses line-anchored regexes
-  (`^\s*version\s+"…"` / `^\s*sha256\s+"…"`). The URL line contains
-  `#{version}` literally, so it's never matched.
+  (`^\s*url\s+"…"` / `^\s*version\s+"…"` / `^\s*sha256\s+"…"`). The URL
+  line is rewritten from `#cask_url_after_bump` on every bump; default
+  `#cask_url_after_bump` returns `#cask_url_template` so the URL only
+  changes when the subclass overrides.
 - Subclass MUST stay thin: only `#upstream` + one of (`#worker_path` /
-  `#download_url`) + optional `#validate_download` + per-vendor constants.
-  If you reach for a shared HTTP helper, add it to the base.
+  `#download_url`) + optional `#validate_download` + optional
+  `#cask_url_after_bump` + per-vendor constants. If you reach for a
+  shared HTTP helper, add it to the base.
 
 ## Worker
 
@@ -120,8 +137,14 @@ session hook will object otherwise.
   `worker/node_modules/`; run `cd worker && npm install` once after entering
   the dev shell, otherwise `just worker-*` recipes fail.
 - `caches.default` (Cloudflare Cache API) is used instead of KV — no
-  bindings to manage. 5-minute TTL is below typical signature lifetimes
-  (UGREEN's is ~8 min).
+  bindings to manage. TTL is 120 s for UGREEN — well under the observed
+  ~8 min signature lifetime, and short enough that an `id`-pinned cask
+  re-serves a fresh signed URL within a few minutes of upstream rotating.
+- Public Worker has no auth — cask URLs need to be hit by any user's brew.
+  Abuse model: external attacker can fan-out vendor LIST/SIGN calls from
+  CF edge. Mitigation lives in the Cloudflare dashboard, not in code:
+  enable per-IP rate limiting on `/ugnas/*` (and any future vendor route)
+  via WAF if traffic spikes. Don't add request auth.
 - The Worker URL hostname (`homebrew-proxy.imbytecat.workers.dev`) lives in
   one constant: `CaskBumper::WORKER_BASE` in `scripts/lib/cask_bumper.rb`.
   Each proxied cask DSL file also hardcodes it in `url` / `verified:` (cask
@@ -153,6 +176,11 @@ session hook will object otherwise.
   Adding a cask = create `Casks/<name>.rb` + `scripts/bump-<name>.rb`; no
   workflow edit needed. **Don't use `ls glob` here** — shellcheck SC2012
   fires (see "brew style internals" below).
+- `bump.yml` sets `concurrency: group: bump-${{ matrix.cask }}` with
+  `cancel-in-progress: false` so simultaneous schedule + manual dispatch
+  on the same cask queue rather than racing on the fixed
+  `bot/bump-<cask>` branch (`create-pull-request` action would otherwise
+  push to the same ref and corrupt the PR).
 - The deploy workflow explicitly fails with a clear error when
   `CLOUDFLARE_API_TOKEN` is missing — don't remove that check, the
   underlying `wrangler` failure is unreadable.
