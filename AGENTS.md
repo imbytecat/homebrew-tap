@@ -30,8 +30,8 @@ production due to CAPTCHA.**
 | `scripts/bump-<name>.rb` | Thin subclass per cask. Detects upstream version via the cask's version source (LIST endpoint, version JSON, or `-latest` HEAD redirect — whichever is reachable from the bump runner without CAPTCHA), exits if unchanged, downloads (through the Worker for CAPTCHA-gated vendors, directly otherwise), verifies upstream MD5 when available, rewrites the cask. |
 | `.github/workflows/ci.yml` | macOS: `brew style --cask imbytecat/tap` + `brew audit --cask --online --tap imbytecat/tap`. Ubuntu: `rubocop scripts/` and worker `npm ci` + `typecheck` + `test`. Runs on push + PR. |
 | `.github/workflows/deploy-worker.yml` | `npm ci` → `typecheck` → `test` → `wrangler deploy`. Triggers on push to `main` touching `worker/**` or the workflow file itself. |
-| `.github/workflows/bump.yml` | Weekly + manual. `discover` job uses `find scripts -name 'bump-*.rb' -printf '%f\n'` to build a matrix; `bump` job runs each in parallel, opens one PR per outdated cask. `workflow_dispatch` accepts an optional `cask` input to bump just one. |
-| `.github/dependabot.yml` | Weekly grouped updates for `github-actions` + worker `npm`. |
+| `.github/workflows/bump.yml` | Daily (06:17 UTC, off-the-hour) + manual. `discover` job uses `find scripts -name 'bump-*.rb' -printf '%f\n'` to build a matrix; `bump` job runs each in parallel, opens one PR per outdated cask. Bumpers short-circuit when upstream is unchanged so daily ≠ daily PRs. Closing a bot PR without merging does NOT silence the bump — next run will recreate it on the same `bot/bump-<cask>` branch. `workflow_dispatch` accepts an optional `cask` input to bump just one. |
+| `.github/dependabot.yml` | Daily grouped updates for `github-actions`; weekly grouped for worker `npm`. |
 | `flake.nix` | Dev shell: ruby_3_3 + rubocop, nodejs_22, just, curl, p7zip, libplist, jq, actionlint, shellcheck. |
 | `Justfile` | `set shell := ["bash", "-ceuo", "pipefail"]`. Recipes: `bump <name>` / `style` (rubocop + actionlint) / `worker-test` (typecheck + vitest) / `worker-dev` / `worker-deploy`. Worker recipes assume `npm install` was run once. |
 | `worker/wrangler.toml` | Pins `name = "homebrew-proxy"`, `main = "src/index.ts"`, `compatibility_date = "<recent>"`. Bump `compatibility_date` rather than dropping it. |
@@ -122,10 +122,13 @@ session hook will object otherwise.
   Worker hits the vendor's by-id endpoint and skips LIST entirely. See
   `bump-ugreen-nas.rb` + `Casks/ugreen-nas.rb`'s `?v=#{version}&id=536`.
 - `CaskBumper::Bumper#rewrite_cask` uses line-anchored regexes
-  (`^\s*url\s+"…"` / `^\s*version\s+"…"` / `^\s*sha256\s+"…"`). The URL
-  line is rewritten from `#cask_url_after_bump` on every bump; default
-  `#cask_url_after_bump` returns `#cask_url_template` so the URL only
-  changes when the subclass overrides.
+  (`^\s*url\s+"…"` / `^\s*version\s+"…"` / `^\s*sha256\s+"…"`) and aborts
+  if any of the three substitutions fails to match — silent partial
+  writes would otherwise produce a cask with new URL + stale version, and
+  no later step would catch it. The URL line is rewritten from
+  `#cask_url_after_bump` on every bump; default `#cask_url_after_bump`
+  returns `#cask_url_template` so the URL only changes when the subclass
+  overrides.
 - Subclass MUST stay thin: only `#upstream` + one of (`#worker_path` /
   `#download_url`) + optional `#validate_download` + optional
   `#cask_url_after_bump` + per-vendor constants. If you reach for a
@@ -194,6 +197,35 @@ session hook will object otherwise.
   (macOS only). Ubuntu would work for `doubao-ime` and `ugreen-nas`
   alone but the matrix shares a single `runs-on`, and macOS has every
   tool the bumpers need including `curl`, `7z`, and `pkgutil`.
+- `bump.yml` runs `brew style --cask imbytecat/tap/<cask>` inline after
+  the Ruby bumper writes, gated on `git diff --quiet`. Use the
+  **tap-qualified token**, not a file path — Homebrew rejects cask files
+  outside `HOMEBREW_LIBRARY/Taps/`, and even though `setup-homebrew`
+  symlinks the checkout into the tap dir, the file-path form
+  (`Casks/<cask>.rb`) resolves to the workspace and fails. The setup
+  action auto-symlinks only when `$GITHUB_REPOSITORY` matches
+  `^.+/homebrew-.+$` (it does for `imbytecat/homebrew-tap`).
+- **`Homebrew/actions/setup-homebrew@main` MUST run before the Ruby
+  bumper, not after.** That action restructures `GITHUB_WORKSPACE` (moves
+  the checkout into the Homebrew tap dir via symlink) and the
+  reorganization can erase pending edits in the working tree. Putting
+  setup-homebrew after `ruby scripts/bump-...rb` risks losing the bump
+  diff before `brew style` and `create-pull-request` ever see it. Cost
+  of always-setup: ~30 s of macOS minutes per matrix run per day —
+  irrelevant on a public repo.
+- Inline `brew style` is the bot PR's pre-merge gate:
+  `peter-evans/create-pull-request` uses the default `${{ github.token }}`
+  which means resulting PRs do NOT trigger `on: pull_request` in
+  `ci.yml`. Without the inline check, a malformed bumper rewrite would
+  only be caught after merge by `ci.yml`'s `on: push: branches: [main]`
+  run. Don't switch to a PAT just for this — inline validation has the
+  same blast radius and no token to rotate.
+- Bot PRs from `bump.yml` get labels `bump,automation`. A preceding
+  `gh label create … --force` step creates/updates them idempotently so
+  the workflow doesn't depend on manual repo setup; this needs
+  `permissions: issues: write` on the `bump` job because
+  `peter-evans/create-pull-request` posts labels via the Issues API.
+  Filter bot PRs out of review queues with `is:pr -label:bump`.
 - The deploy workflow explicitly fails with a clear error when
   `CLOUDFLARE_API_TOKEN` is missing — don't remove that check, the
   underlying `wrangler` failure is unreadable.

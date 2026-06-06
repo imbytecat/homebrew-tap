@@ -2,7 +2,9 @@ name: Bump casks
 
 on:
   schedule:
-    - cron: "0 6 * * 1"
+    # daily, off-the-hour to dodge GitHub's :00 cron rush. safe because
+    # bumpers short-circuit when upstream version is unchanged.
+    - cron: "17 6 * * *"
   workflow_dispatch:
     inputs:
       cask:
@@ -40,9 +42,11 @@ jobs:
     needs: discover
     if: needs.discover.outputs.casks != '[]'
     runs-on: macos-latest
+    timeout-minutes: 20
     permissions:
       contents: write
       pull-requests: write
+      issues: write
     strategy:
       fail-fast: false
       matrix:
@@ -52,14 +56,37 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v6
+      - uses: Homebrew/actions/setup-homebrew@main
+        with:
+          core: false
+          cask: true
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
       - run: ruby scripts/bump-${{ matrix.cask }}.rb
-      - uses: peter-evans/create-pull-request@v8
+      - id: diff
+        run: |
+          if git diff --quiet -- Casks/${{ matrix.cask }}.rb; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.diff.outputs.changed == 'true'
+        run: brew style --cask imbytecat/tap/${{ matrix.cask }}
+      - if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create bump --force --description "Automated cask version bump"
+          gh label create automation --force --description "Created by a workflow"
+      - if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
         with:
           commit-message: "chore(${{ matrix.cask }}): 自动 bump 至新版"
           title: "chore(${{ matrix.cask }}): 自动 bump 至新版"
           branch: bot/bump-${{ matrix.cask }}
           delete-branch: true
           add-paths: Casks/${{ matrix.cask }}.rb
+          labels: |
+            bump
+            automation

@@ -41,7 +41,7 @@ Casks whose vendor CDN is publicly reachable (e.g. `doubao-ime`) point
   source (LIST endpoint, version JSON, or `-latest` HEAD redirect — no
   CAPTCHA), exits if unchanged, downloads (through the Worker for
   CAPTCHA-gated vendors, directly otherwise), verifies upstream MD5 when
-  available, and rewrites the cask. A weekly GitHub Action runs every
+  available, and rewrites the cask. A daily GitHub Action runs every
   bumper in a matrix and opens one PR per outdated cask.
 - The Worker caches each signed URL for 2 min (Cloudflare `caches.default`)
   so hot installs share a single upstream call.
@@ -62,7 +62,7 @@ just worker-test           # typecheck + vitest
 
 ## Repo setup (one-time)
 
-The weekly bump workflow needs permission to open PRs. In repository
+The daily bump workflow needs permission to open PRs. In repository
 **Settings → Actions → General → Workflow permissions**, enable
 *Allow GitHub Actions to create and approve pull requests*. Or via `gh`:
 

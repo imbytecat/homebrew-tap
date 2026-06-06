@@ -79,7 +79,12 @@ module CaskBumper
       Dir.mktmpdir("#{@name}-bump-") do |tmp|
         dest = File.join(tmp, "download")
         warn "[#{@name}] GET #{download_url}"
-        abort "curl failed" unless system("curl", "-fL", "--retry", "3", "-o", dest, download_url)
+        unless system("curl", "-fL", "--retry", "3",
+                      "--connect-timeout", "15",
+                      "--max-time", "900", "--retry-max-time", "900",
+                      "-o", dest, download_url)
+          abort "curl failed"
+        end
 
         if expected_md5
           actual = Digest::MD5.file(dest).hexdigest
@@ -96,10 +101,16 @@ module CaskBumper
     def rewrite_cask(version:, sha256:)
       cask = File.read(@cask_path)
       new_url = cask_url_after_bump
-      cask.sub!(/^(\s*url\s+)"[^"]+"/, "\\1\"#{new_url}\"")
-      cask.sub!(/^(\s*version\s+)"[^"]+"/, "\\1\"#{version}\"")
-      cask.sub!(/^(\s*sha256\s+)"[0-9a-f]{64}"/, "\\1\"#{sha256}\"")
+      replace!(cask, /^(\s*url\s+)"[^"]+"/, "\\1\"#{new_url}\"", "url")
+      replace!(cask, /^(\s*version\s+)"[^"]+"/, "\\1\"#{version}\"", "version")
+      replace!(cask, /^(\s*sha256\s+)"[0-9a-f]{64}"/, "\\1\"#{sha256}\"", "sha256")
       File.write(@cask_path, cask)
+    end
+
+    def replace!(cask, pattern, replacement, label)
+      return if cask.sub!(pattern, replacement)
+
+      abort "rewrite_cask: #{label} line did not match in #{@cask_path}"
     end
 
     def fetch_json(url)

@@ -21,6 +21,10 @@ Metrics/AbcSize:
   Exclude:
     - "scripts/**/*.rb"
 
+Metrics/ClassLength:
+  Exclude:
+    - "scripts/**/*.rb"
+
 Metrics/MethodLength:
   Exclude:
     - "scripts/**/*.rb"
