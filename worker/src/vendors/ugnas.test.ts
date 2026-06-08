@@ -73,6 +73,27 @@ describe("resolveByVersion (fallback)", () => {
     );
   });
 
+  it("matches verName case-insensitively (uppercase V prefix)", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              appSoftVers: [
+                { appNo: "com.ugreenNasPro.mac", clientBit: 3, id: 536, verName: "V1.16.0.77937" },
+              ],
+            },
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { linkData: { tempUrl: "https://cdn.example.com/file.dmg?sig=abc" } } })),
+      );
+    await expect(resolveByVersion("1.16.0.77937")).resolves.toBe(
+      "https://cdn.example.com/file.dmg?sig=abc",
+    );
+  });
+
   it("throws on non-2xx LIST HTTP", async () => {
     mockFetchOnce({}, { status: 503 });
     await expect(resolveByVersion("1.16.0.77937")).rejects.toThrow(/LIST API HTTP 503/);
@@ -108,6 +129,12 @@ describe("ugnas Hono app", () => {
     const res = await ugnas.request("/dl");
     expect(res.status).toBe(400);
     expect(await res.text()).toMatch(/Missing required query: v/);
+  });
+
+  it("rejects malformed v with 400", async () => {
+    const res = await ugnas.request("/dl?v=not-a-version");
+    expect(res.status).toBe(400);
+    expect(await res.text()).toMatch(/Invalid v/);
   });
 
   it("rejects non-numeric id with 400", async () => {

@@ -23,7 +23,8 @@ export async function redirectProxy(c: Context, opts: RedirectProxyOptions) {
     url = await opts.resolve();
   } catch (e) {
     console.error(`[${opts.cacheKey}] resolve failed:`, e);
-    return c.text(`Upstream error: ${(e as Error).message}`, 502);
+    const message = e instanceof Error ? e.message : String(e);
+    return c.text(`Upstream error: ${message}`, 502);
   }
 
   c.executionCtx.waitUntil(
