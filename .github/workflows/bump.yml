@@ -63,7 +63,9 @@ jobs:
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "3.3"
-      - run: ruby scripts/bump-${{ matrix.cask }}.rb
+      - env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ruby scripts/bump-${{ matrix.cask }}.rb
       - id: diff
         run: |
           if git diff --quiet -- Casks/${{ matrix.cask }}.rb; then

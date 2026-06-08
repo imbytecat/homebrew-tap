@@ -77,6 +77,15 @@ session hook will object otherwise.
   **and** current cask `url`, returns early if both are unchanged. **Never
   download the binary speculatively** — every wasteful fetch nudges the IP
   toward CAPTCHA on the download endpoint.
+- GitHub-API-based bumpers (e.g. `bump-shandianshuo.rb`, which reads
+  `releases/latest`) MUST authenticate. Base `#fetch_json` injects
+  `Authorization: Bearer <token>` **only** when the host is
+  `api.github.com` (token from `GITHUB_TOKEN` / `GH_TOKEN` /
+  `HOMEBREW_GITHUB_API_TOKEN`), so the token never leaks to vendor hosts.
+  `bump.yml` passes `GITHUB_TOKEN: ${{ github.token }}` as step env.
+  Reason: unauthenticated GitHub API is 60 req/h per IP and shared CI
+  runner IPs exhaust it — the first scheduled run 403'd with
+  `API rate limit exceeded`. Local runs work tokenless (one dev < 60/h).
 - `Bumper#run` first line calls `#download_url` and discards the result —
   this is a deliberate fail-fast contract check that raises
   `NotImplementedError` if a subclass overrides neither `#worker_path` nor

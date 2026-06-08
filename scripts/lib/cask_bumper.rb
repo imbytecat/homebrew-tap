@@ -122,9 +122,17 @@ module CaskBumper
       req = Net::HTTP::Get.new(uri.request_uri)
       req["User-Agent"] = "homebrew-tap-bumper/1.0"
       req["Accept"] = "application/json"
+      token = github_api_token(uri)
+      req["Authorization"] = "Bearer #{token}" if token
       res = http.request(req)
       abort "HTTP #{res.code} #{url}: #{res.body[0, 200]}" unless res.is_a?(Net::HTTPSuccess)
       JSON.parse(res.body)
+    end
+
+    def github_api_token(uri)
+      return nil unless uri.host == "api.github.com"
+
+      ENV.values_at("GITHUB_TOKEN", "GH_TOKEN", "HOMEBREW_GITHUB_API_TOKEN").compact.reject(&:empty?).first
     end
 
     def fetch_redirect_location(url)
