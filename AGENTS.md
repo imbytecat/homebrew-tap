@@ -197,14 +197,18 @@ session hook will object otherwise.
   (macOS only). Ubuntu would work for `doubao-ime` and `ugreen-nas`
   alone but the matrix shares a single `runs-on`, and macOS has every
   tool the bumpers need including `curl`, `7z`, and `pkgutil`.
-- `bump.yml` runs `brew style --cask imbytecat/tap/<cask>` inline after
-  the Ruby bumper writes, gated on `git diff --quiet`. Use the
+- `bump.yml` runs `brew style --cask imbytecat/tap/<cask>` then
+  `brew audit --cask --online imbytecat/tap/<cask>` inline after the Ruby
+  bumper writes, both gated on `git diff --quiet`. Use the
   **tap-qualified token**, not a file path — Homebrew rejects cask files
   outside `HOMEBREW_LIBRARY/Taps/`, and even though `setup-homebrew`
   symlinks the checkout into the tap dir, the file-path form
   (`Casks/<cask>.rb`) resolves to the workspace and fails. The setup
   action auto-symlinks only when `$GITHUB_REPOSITORY` matches
-  `^.+/homebrew-.+$` (it does for `imbytecat/homebrew-tap`).
+  `^.+/homebrew-.+$` (it does for `imbytecat/homebrew-tap`). The online
+  audit downloads the freshly-bumped artifact (one Worker call for
+  proxied casks) — acceptable because it only fires when the bump
+  actually changed the cask.
 - **`Homebrew/actions/setup-homebrew@main` MUST run before the Ruby
   bumper, not after.** That action restructures `GITHUB_WORKSPACE` (moves
   the checkout into the Homebrew tap dir via symlink) and the
@@ -213,13 +217,13 @@ session hook will object otherwise.
   diff before `brew style` and `create-pull-request` ever see it. Cost
   of always-setup: ~30 s of macOS minutes per matrix run per day —
   irrelevant on a public repo.
-- Inline `brew style` is the bot PR's pre-merge gate:
-  `peter-evans/create-pull-request` uses the default `${{ github.token }}`
-  which means resulting PRs do NOT trigger `on: pull_request` in
-  `ci.yml`. Without the inline check, a malformed bumper rewrite would
-  only be caught after merge by `ci.yml`'s `on: push: branches: [main]`
-  run. Don't switch to a PAT just for this — inline validation has the
-  same blast radius and no token to rotate.
+- Inline `brew style` + `brew audit --online` are the bot PR's pre-merge
+  gate: `peter-evans/create-pull-request` uses the default
+  `${{ github.token }}` which means resulting PRs do NOT trigger
+  `on: pull_request` in `ci.yml`. Without the inline checks, a malformed
+  bumper rewrite would only be caught after merge by `ci.yml`'s
+  `on: push: branches: [main]` run. Don't switch to a PAT just for this —
+  inline validation has the same blast radius and no token to rotate.
 - Bot PRs from `bump.yml` get labels `bump,automation`. A preceding
   `gh label create … --force` step creates/updates them idempotently so
   the workflow doesn't depend on manual repo setup; this needs

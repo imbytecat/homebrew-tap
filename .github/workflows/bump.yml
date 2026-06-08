@@ -74,6 +74,8 @@ jobs:
       - if: steps.diff.outputs.changed == 'true'
         run: brew style --cask imbytecat/tap/${{ matrix.cask }}
       - if: steps.diff.outputs.changed == 'true'
+        run: brew audit --cask --online imbytecat/tap/${{ matrix.cask }}
+      - if: steps.diff.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
