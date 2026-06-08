@@ -256,6 +256,15 @@ session hook will object otherwise.
 
 Key implications:
 
+- **`brew style`'s rubocop is STRICTER than the repo `.rubocop.yml`.** It
+  loads Homebrew's own config (Performance/* cops, `Style/ReturnNil`,
+  `Style/InvertibleUnlessCondition`, `Performance/DeletePrefix`, …) on top
+  of ours and lints **all** `*.rb` in the tap — `scripts/` included. So
+  `rubocop scripts` (the `scripts` CI job + `just style`) passing does NOT
+  mean the `brew` CI job passes. Before pushing script changes, repro the
+  real gate: `brew style --cask imbytecat/tap` against a tap clone, not
+  just `rubocop scripts`. (This split bit a bump-script change: clean under
+  repo rubocop, three offenses under Homebrew's.)
 - **`brew style` has no flag to disable actionlint** (only `--only-cops` /
   `--except-cops` exist, and those are rubocop-only). If you ever need to
   suppress an actionlint check, use `.github/actionlint.yaml`'s

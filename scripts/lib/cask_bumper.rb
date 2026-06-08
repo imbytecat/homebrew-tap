@@ -130,7 +130,7 @@ module CaskBumper
     end
 
     def github_api_token(uri)
-      return nil unless uri.host == "api.github.com"
+      return if uri.host != "api.github.com"
 
       ENV.values_at("GITHUB_TOKEN", "GH_TOKEN", "HOMEBREW_GITHUB_API_TOKEN").compact.reject(&:empty?).first
     end

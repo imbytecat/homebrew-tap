@@ -22,7 +22,7 @@ class ShandianshuoBumper < CaskBumper::Bumper
               abort("no asset named #{asset_name}")
       url = asset["browser_download_url"] || abort("missing browser_download_url")
       digest = asset["digest"] || abort("missing digest")
-      sha256 = digest.sub(/\Asha256:/, "")
+      sha256 = digest.delete_prefix("sha256:")
       abort "unexpected digest format: #{digest.inspect}" if sha256 == digest
       expected = cask_url_template.gsub("\#{version}", version)
       abort "upstream URL drifted: got #{url}, expected #{expected}" if url != expected
