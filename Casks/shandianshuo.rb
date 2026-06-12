@@ -1,6 +1,6 @@
 cask "shandianshuo" do
-  version "0.6.9"
-  sha256 "0b8c8dea4b2a4fc49a41d40b9fb1612b404806888313c130d1bfd97fd377d60b"
+  version "0.7.0"
+  sha256 "f3da5e62b8ac6a619c1da31bf20b6d58566a01a15ceb1b7a4860e402ce631aff"
 
   url "https://github.com/shandianshuo/shandianshuo-releases/releases/download/v#{version}/shandianshuo_#{version}_universal.dmg",
       verified: "github.com/shandianshuo/shandianshuo-releases/"
@@ -14,7 +14,7 @@ cask "shandianshuo" do
     strategy :github_latest
   end
 
-  depends_on macos: :big_sur
+  depends_on macos: :monterey
 
   app "闪电说.app"
 
