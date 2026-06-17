@@ -1,6 +1,6 @@
 cask "shandianshuo" do
-  version "0.7.0"
-  sha256 "f3da5e62b8ac6a619c1da31bf20b6d58566a01a15ceb1b7a4860e402ce631aff"
+  version "0.7.1"
+  sha256 "7c07f47919800120d6b2aae1879bddbfe1bf67299db4487fd27accfa8abdf940"
 
   url "https://github.com/shandianshuo/shandianshuo-releases/releases/download/v#{version}/shandianshuo_#{version}_universal.dmg",
       verified: "github.com/shandianshuo/shandianshuo-releases/"
