@@ -21,7 +21,7 @@ jobs:
     outputs:
       casks: ${{ steps.list.outputs.casks }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - id: list
         env:
           INPUT_CASK: ${{ inputs.cask }}
@@ -55,7 +55,7 @@ jobs:
       group: bump-${{ matrix.cask }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: Homebrew/actions/setup-homebrew@main
         with:
           core: false
