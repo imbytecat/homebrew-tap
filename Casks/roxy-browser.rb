@@ -1,6 +1,6 @@
 cask "roxy-browser" do
-  version "3.9.1"
-  sha256 "8d4ad4edf155f867d744cb6da38426f0e81e4df68461c4ba59b819e7ff26dcdf"
+  version "3.9.2"
+  sha256 "25c9756b02372734b49d8f48848eb12673d774118c8729e33c04c8b122954bed"
 
   url "https://sgp1.vultrobjects.com/roxybrowseross/public/package/app/macOS/apple/#{version}/RoxyBrowser_apple_#{version}.pkg",
       verified: "sgp1.vultrobjects.com/roxybrowseross/public/package/app/macOS/apple/"
