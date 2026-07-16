@@ -66,7 +66,7 @@ export async function resolveByVersion(version: string): Promise<string> {
 
 export const ugnas = new Hono();
 
-ugnas.get("/dl", (c) => {
+ugnas.get("/dl", async (c) => {
   const v = c.req.query("v");
   if (!v) return c.text("Missing required query: v", 400);
   if (!/^\d+(?:\.\d+)*$/.test(v)) return c.text("Invalid v (must be a dotted version)", 400);
