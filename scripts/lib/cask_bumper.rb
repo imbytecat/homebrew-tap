@@ -67,7 +67,7 @@ module CaskBumper
 
     def cask_url_template
       template = File.read(@cask_path)[/^\s*url\s+"([^"]+)"/, 1] || abort("can't read url from #{@cask_path}")
-      abort "cask URL must contain literal \#{version}: #{template}" unless template.include?("\#{version}")
+      abort "cask URL must interpolate version: #{template}" unless template.match?(/\#\{version[.\w]*\}/)
       template
     end
 

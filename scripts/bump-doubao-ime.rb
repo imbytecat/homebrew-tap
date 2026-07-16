@@ -6,7 +6,8 @@ require_relative "lib/cask_bumper"
 
 class DoubaoImeBumper < CaskBumper::Bumper
   DOWNLOAD_API = "https://shurufa.doubao.com/api/v1/app/download_url?platform=macos"
-  NESTED_TEMPLATE = "DoubaoImeInstaller_v%<version>s.app/Contents/Resources/DoubaoIme.zip"
+  URL_BUILD_PATTERN = %r{/DoubaoImeInstaller_v(\d+)\.zip\z}
+  NESTED_TEMPLATE = "DoubaoImeInstaller_v%<build>s.app/Contents/Resources/DoubaoIme.zip"
 
   def initialize
     super("doubao-ime")
@@ -17,11 +18,12 @@ class DoubaoImeBumper < CaskBumper::Bumper
   def upstream
     @upstream ||= begin
       data = fetch_json(DOWNLOAD_API).fetch("data") { abort "bad API payload" }
-      version = data["version_name"]&.sub(/\A[Vv]/, "") || abort("missing version_name")
+      marketing = data["version_name"]&.sub(/\A[Vv]/, "") || abort("missing version_name")
       url = data["url"] || abort("missing url")
-      expected = cask_url_template.sub("\#{version}", version)
+      build = url[URL_BUILD_PATTERN, 1] || abort("can't parse build from url: #{url}")
+      expected = cask_url_template.sub("\#{version.csv.second}", build)
       abort "upstream URL drifted: got #{url}, expected #{expected}" if url != expected
-      { version: version, url: url }
+      { version: "#{marketing},#{build}", build: build, url: url }
     end
   end
 
@@ -30,7 +32,7 @@ class DoubaoImeBumper < CaskBumper::Bumper
   end
 
   def validate_download(path)
-    nested = format(NESTED_TEMPLATE, version: upstream.fetch(:version))
+    nested = format(NESTED_TEMPLATE, build: upstream.fetch(:build))
     listing, status = Open3.capture2e("7z", "l", "-slt", path)
     abort "7z l failed:\n#{listing}" unless status.success?
     target = "Path = #{nested}"

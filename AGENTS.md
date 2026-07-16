@@ -26,7 +26,7 @@ production due to CAPTCHA.**
 | `Casks/<name>.rb` | The cask. Pure declarative DSL. No `require`, no custom class, URL must include `#{version}` interpolation. |
 | `worker/` | Cloudflare Worker. TS + Hono. Each new vendor = a Hono sub-app under `worker/src/vendors/<vendor>.ts`, mounted in `worker/src/index.ts`. The generic `redirectProxy(c, { resolve, cacheKey, ttl })` helper in `worker/src/lib/proxy.ts` handles `caches.default` + 302; vendor modules export one or more resolver functions (by version, by pinned artifact id, etc.) and a `Hono` sub-app whose route picks the right resolver based on query params. `USER_AGENT` is the one shared constant. |
 | `worker/src/vendors/*.test.ts` | Vitest tests for each vendor's resolver. Plain node env, `fetch` mocked via `vi.spyOn`. Pool-Workers is not used — we only test pure resolve logic, not `caches.default`. |
-| `scripts/lib/cask_bumper.rb` | `CaskBumper::Bumper` base class. Subclasses override `#upstream` (returns `{ version: }` plus optional `md5:`/`url:`/`id:`/per-vendor keys) and either `#worker_path` (CAPTCHA-gated → proxied via Worker) or `#download_url` (public CDN → direct). Optional hooks: `#validate_download(path)` for post-download archive/pkg checks, `#cask_url_after_bump` to rewrite non-version placeholders in the cask `url` line (e.g. UGREEN's pinned vendor `id=`). Base enforces three invariants automatically: cask `url` must contain literal `\#{version}`; proxied cask `url` must start with `WORKER_BASE`; URL line is rewritten by `#rewrite_cask` from `#cask_url_after_bump` on every bump. Base provides `#cask_url_template`, `#fetch_json`, and `#fetch_redirect_location` helpers. |
+| `scripts/lib/cask_bumper.rb` | `CaskBumper::Bumper` base class. Subclasses override `#upstream` (returns `{ version: }` plus optional `md5:`/`url:`/`id:`/per-vendor keys) and either `#worker_path` (CAPTCHA-gated → proxied via Worker) or `#download_url` (public CDN → direct). Optional hooks: `#validate_download(path)` for post-download archive/pkg checks, `#cask_url_after_bump` to rewrite non-version placeholders in the cask `url` line (e.g. UGREEN's pinned vendor `id=`). Base enforces three invariants automatically: cask `url` must interpolate `version` (literal `\#{version}` or a method form like `\#{version.csv.second}`); proxied cask `url` must start with `WORKER_BASE`; URL line is rewritten by `#rewrite_cask` from `#cask_url_after_bump` on every bump. Base provides `#cask_url_template`, `#fetch_json`, and `#fetch_redirect_location` helpers. |
 | `scripts/bump-<name>.rb` | Thin subclass per cask. Detects upstream version via the cask's version source (LIST endpoint, version JSON, or `-latest` HEAD redirect — whichever is reachable from the bump runner without CAPTCHA), exits if unchanged, downloads (through the Worker for CAPTCHA-gated vendors, directly otherwise), verifies upstream MD5 when available, rewrites the cask. |
 | `.github/workflows/ci.yml` | macOS: `brew style --cask imbytecat/tap` + `brew audit --cask --online --tap imbytecat/tap`. Ubuntu: `rubocop scripts/` and worker `npm ci` + `typecheck` + `test`. Runs on push + PR. |
 | `.github/workflows/deploy-worker.yml` | `npm ci` → `typecheck` → `test` → `wrangler deploy`. Triggers on push to `main` touching `worker/**` or the workflow file itself. |
@@ -39,9 +39,15 @@ production due to CAPTCHA.**
 
 ## Cask invariants (the cop will catch you)
 
-- **`url` must contain `#{version}` literally in source**. Audit's
+- **`url` must interpolate `version` literally in source**. Audit's
   `unversioned?` check (`brew/Library/Homebrew/cask/url.rb`) grep's the
-  source line for `#{` — if absent it forces `sha256 :no_check`.
+  source line for `#{` — if absent it forces `sha256 :no_check`. When the
+  download filename uses a build number that differs from the marketing
+  version (e.g. `doubao-ime`'s `_v90401.zip` vs `0.9.4`), use the
+  comma-separated `version "<marketing>,<build>"` convention +
+  `#{version.csv.second}` in `url`, and make livecheck emit the same
+  `"#{version},#{build}"` composite (canonical upstream examples:
+  `roblox`, `neteasemusic`, `lm-studio`).
 - **`verified:` is forbidden when the URL host's eTLD+1 matches the
   homepage's eTLD+1**. `audit_unnecessary_verified` errors. Our Worker host
   (`*.workers.dev`) does NOT match `www.ugnas.com`, so we keep `verified:`.
