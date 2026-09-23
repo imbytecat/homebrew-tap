@@ -12,7 +12,7 @@ make `brew install` work from any user's home network, **CAPTCHA-gated**
 casks point their `url` at a Cloudflare Worker (`worker/`, name
 `homebrew-proxy`); the Worker hits the vendor API from Cloudflare edge IPs
 and 302-redirects to the freshly-signed CDN URL. Casks with **publicly
-reachable CDN URLs** (e.g. `doubao-ime`) skip the Worker entirely and
+reachable CDN URLs** (e.g. `roxy-browser`) skip the Worker entirely and
 point `url` at the vendor CDN directly. The cask always pins `sha256` of
 the published build; a bump script refreshes version + sha when upstream
 cuts a release. **Do not write a CAPTCHA-gated cask whose URL points
@@ -43,22 +43,23 @@ production due to CAPTCHA.**
   `unversioned?` check (`brew/Library/Homebrew/cask/url.rb`) grep's the
   source line for `#{` — if absent it forces `sha256 :no_check`. When the
   download filename uses a build number that differs from the marketing
-  version (e.g. `doubao-ime`'s `_v90401.zip` vs `0.9.4`), use the
+  version, use the
   comma-separated `version "<marketing>,<build>"` convention +
   `#{version.csv.second}` in `url`, and make livecheck emit the same
   `"#{version},#{build}"` composite (canonical upstream examples:
   `roblox`, `neteasemusic`, `lm-studio`).
-- **`verified:` is forbidden when the URL host's eTLD+1 matches the
-  homepage's eTLD+1**. `audit_unnecessary_verified` errors. Our Worker host
-  (`*.workers.dev`) does NOT match `www.ugnas.com`, so we keep `verified:`.
+- **Omit `verified:` from `url`**. Homebrew deprecated this parameter;
+  use default URL verification, including for Worker and third-party CDN URLs.
 - **`zap trash:` array is sorted case-insensitively** by the
   `Cask/ArrayAlphabetization` cop (`a.downcase <=> b.downcase`). ASCII
   sort (`U` < `c`) is wrong; `downcase` (`u` > `c`) is right.
 - **`uninstall` keys follow a fixed order** enforced by
   `Cask/UninstallMethodsOrder`: `quit` before `pkgutil` before
   `delete`/`trash`. Alphabetical or "convenient" ordering fails.
-- **`depends_on macos:` uses the symbol form**, not a comparison string.
-  `Homebrew/OSDependsOn` cop rejects `">= :big_sur"`; use `:big_sur`.
+- **`depends_on macos:` uses a supported symbol**, e.g. `:monterey`,
+  not a comparison string. Use `depends_on :macos` when the vendor's
+  minimum is at or below Homebrew's oldest allowed macOS version.
+  Sort `depends_on` stanzas by key: `arch` before `macos`.
 - **Don't write Ruby logic in the cask**. Custom `using:` classes and
   inline `require` statements have zero precedent in `homebrew/homebrew-cask`
   and we ripped them out. Keep it declarative.
@@ -83,8 +84,7 @@ session hook will object otherwise.
   **and** current cask `url`, returns early if both are unchanged. **Never
   download the binary speculatively** — every wasteful fetch nudges the IP
   toward CAPTCHA on the download endpoint.
-- GitHub-API-based bumpers (e.g. `bump-shandianshuo.rb`, which reads
-  `releases/latest`) MUST authenticate. Base `#fetch_json` injects
+- GitHub-API-based bumpers MUST authenticate. Base `#fetch_json` injects
   `Authorization: Bearer <token>` **only** when the host is
   `api.github.com` (token from `GITHUB_TOKEN` / `GH_TOKEN` /
   `HOMEBREW_GITHUB_API_TOKEN`), so the token never leaks to vendor hosts.
@@ -109,8 +109,7 @@ session hook will object otherwise.
 - For casks with non-trivial container shapes (e.g. `container nested:`),
   or `.pkg` casks where the postinstall script makes network calls, the
   subclass overrides `#validate_download(path)` to spot-check the
-  downloaded archive. Examples: `bump-doubao-ime.rb` uses `7z l -slt`
-  against a nested-zip path template; `bump-roxy-browser.rb` does
+  downloaded archive. `bump-roxy-browser.rb` does
   `pkgutil --expand-full` then scans `**/Scripts/*` for unknown HTTP
   hosts against a per-vendor whitelist (catches vendor adding new
   install-time telemetry endpoints between SHA-rounds).
@@ -169,8 +168,8 @@ session hook will object otherwise.
   via WAF if traffic spikes. Don't add request auth.
 - The Worker URL hostname (`homebrew-proxy.imbytecat.workers.dev`) lives in
   one constant: `CaskBumper::WORKER_BASE` in `scripts/lib/cask_bumper.rb`.
-  Each proxied cask DSL file also hardcodes it in `url` / `verified:` (cask
-  DSL can't reference Ruby constants). Keep these in sync.
+  Each proxied cask DSL file also hardcodes it in `url` (cask DSL can't
+  reference Ruby constants). Keep these in sync.
 - TypeScript strict + `@cloudflare/workers-types`. `npm run typecheck`
   must pass. `npx wrangler deploy --dry-run` works offline as a smoke test.
 - `npm test` runs vitest in plain node env, mocking `globalThis.fetch`.
@@ -209,8 +208,8 @@ session hook will object otherwise.
   not infinite queue.
 - `bump.yml` job runs on `macos-latest`, not `ubuntu-latest`. Required
   for `.pkg` cask audits that shell out to `pkgutil --expand-full`
-  (macOS only). Ubuntu would work for `doubao-ime` and `ugreen-nas`
-  alone but the matrix shares a single `runs-on`, and macOS has every
+  (macOS only). Ubuntu would work for `ugreen-nas` alone, but the matrix
+  shares a single `runs-on`, and macOS has every
   tool the bumpers need including `curl`, `7z`, and `pkgutil`.
 - `bump.yml` runs `brew style --cask imbytecat/tap/<cask>` then
   `brew audit --cask --online imbytecat/tap/<cask>` inline after the Ruby
@@ -333,8 +332,8 @@ the *what*.
 - **`auto_updates true` kept** — UGREEN ships its own updater inside the
   app, brew won't fight it.
 - **No `pkgutil:` / `launchctl:` / `signal:` in `.app` casks** —
-  `ugreen-nas` and `doubao-ime` ship plain `.app` bundles (DMG / nested
-  zip), so there's no pkg receipt to drop and no launchd agents observed.
+  `ugreen-nas` ships a plain `.app` bundle in a DMG, so there's no pkg
+  receipt to drop and no launchd agents observed.
   Don't cargo-cult these onto `.app` casks. Real `.pkg` casks
   (`roxy-browser`) DO require `pkgutil:` to clear the install receipt
   on uninstall.

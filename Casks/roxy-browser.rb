@@ -1,9 +1,8 @@
 cask "roxy-browser" do
-  version "3.9.2"
-  sha256 "25c9756b02372734b49d8f48848eb12673d774118c8729e33c04c8b122954bed"
+  version "4.0.6"
+  sha256 "d9717b09a73cdc9f95fc3642a60521ba8508603c4050a56abef39db4bacd8f74"
 
-  url "https://sgp1.vultrobjects.com/roxybrowseross/public/package/app/macOS/apple/#{version}/RoxyBrowser_apple_#{version}.pkg",
-      verified: "sgp1.vultrobjects.com/roxybrowseross/public/package/app/macOS/apple/"
+  url "https://sgp1.vultrobjects.com/roxybrowseross/private/package/app/macOS/apple/#{version}/RoxyBrowser_apple_#{version}.pkg"
   name "RoxyBrowser"
   name "Roxy浏览器"
   desc "Anti-detect fingerprint browser for multi-account management"
@@ -16,8 +15,8 @@ cask "roxy-browser" do
   end
 
   auto_updates true
+  depends_on arch: :arm64
   depends_on macos: :monterey
-  depends_on arch:  :arm64
 
   pkg "RoxyBrowser_apple_#{version}.pkg"
 

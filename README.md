@@ -9,6 +9,7 @@ from any home network. Other casks point at the vendor CDN directly.
 
 ```sh
 brew tap imbytecat/tap
+brew trust --cask imbytecat/tap/<cask>
 brew install --cask imbytecat/tap/<cask>
 ```
 
@@ -16,9 +17,7 @@ brew install --cask imbytecat/tap/<cask>
 
 | Cask | Notes |
 | --- | --- |
-| [`doubao-ime`](Casks/doubao-ime.rb) | Doubao Input Method (豆包输入法). Installs to `~/Library/Input Methods`. |
 | [`roxy-browser`](Casks/roxy-browser.rb) | RoxyBrowser (Roxy浏览器). Apple Silicon only, `.pkg` installer with vendor postinstall script that POSTs an install-completion event to `*.gate.roxybrowser.cn/.net` (bumper audits the script for unknown hosts). |
-| [`shandianshuo`](Casks/shandianshuo.rb) | Shandianshuo (闪电说). Voice-first AI assistant. Universal DMG hosted on the vendor's GitHub releases (`shandianshuo/shandianshuo-releases`); vendor CDN is Referer-locked, GitHub mirror is the install source. |
 | [`ugreen-nas`](Casks/ugreen-nas.rb) | UGREEN NAS (绿联云). |
 
 ## How it works
@@ -34,7 +33,7 @@ brew install ──▶ Cask url (workers.dev/<vendor>/dl?…)
                    └────────── 302 redirect ─────────────────────────┘
 ```
 
-Casks whose vendor CDN is publicly reachable (e.g. `doubao-ime`) point
+Casks whose vendor CDN is publicly reachable (e.g. `roxy-browser`) point
 `url` straight at the CDN and skip the Worker.
 
 - Cask pins `version` + `sha256` of the published build.
