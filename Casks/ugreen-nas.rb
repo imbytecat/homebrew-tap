@@ -1,8 +1,8 @@
 cask "ugreen-nas" do
-  version "1.19.0.78471"
-  sha256 "4f6e2fd675b4be6d3b6d2ae95ea180c9faede662f78170b34a6f3ebcb3ba2e32"
+  version "1.20.0.78579"
+  sha256 "297d84c0fc21cf3f3d837e917e49b36fe3e088def3ec37694cfc296bb0bbe310"
 
-  url "https://homebrew-proxy.imbytecat.workers.dev/ugnas/dl?v=#{version}&id=595"
+  url "https://homebrew-proxy.imbytecat.workers.dev/ugnas/dl?v=#{version}&id=628"
   name "UGREEN NAS"
   name "绿联云"
   desc "Desktop client for UGREEN NAS storage devices"
