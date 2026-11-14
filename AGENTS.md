@@ -131,10 +131,11 @@ session hook will object otherwise.
 - Worker-proxied casks pin **vendor artifact id** in the cask URL when
   the upstream LIST API only exposes the current version. Bumper's
   `#upstream` returns `id:`, `#worker_path` includes `&id=<id>`, and
-  `#cask_url_after_bump` rewrites the `id=\d+` placeholder. This keeps
-  old casks installable even after upstream cuts a newer release: the
-  Worker hits the vendor's by-id endpoint and skips LIST entirely. See
-  `bump-ugreen-nas.rb` + `Casks/ugreen-nas.rb`'s `?v=#{version}&id=536`.
+  `#cask_url_after_bump` rewrites the `id=\d+` placeholder. The Worker
+  then hits the vendor's by-id endpoint and skips LIST. UGREEN only signs
+  the current build: superseded ids return empty `data` and the Worker
+  502s, so a stale cask is uninstallable until its bump PR merges. See
+  `bump-ugreen-nas.rb` + `Casks/ugreen-nas.rb`'s `?v=#{version}&id=<id>`.
 - `CaskBumper::Bumper#rewrite_cask` uses line-anchored regexes
   (`^\s*url\s+"…"` / `^\s*version\s+"…"` / `^\s*sha256\s+"…"`) and aborts
   if any of the three substitutions fails to match — silent partial
@@ -183,7 +184,7 @@ session hook will object otherwise.
 - **`Homebrew/actions/setup-homebrew@main` auto-symlinks the tap** when
   `$GITHUB_REPOSITORY` matches `^.+/homebrew-.+$`. Don't checkout to a
   subdir, don't manually `ln -s` into `Library/Taps/`. Use plain
-  `actions/checkout@v6` and let setup-homebrew handle it.
+  `actions/checkout@v7` and let setup-homebrew handle it.
   ([main.sh](https://github.com/Homebrew/actions/blob/master/setup-homebrew/main.sh#L104-L106))
 - `brew audit --tap imbytecat/tap` is the canonical tap-wide form used by
   `homebrew/homebrew-cask` itself. Don't enumerate casks manually.
@@ -194,7 +195,11 @@ session hook will object otherwise.
   submitted to `homebrew/homebrew-cask` and applies strict rules
   irrelevant to a personal tap.
 - `brew audit --online` actually downloads the DMG to verify SHA256.
-  Each run consumes one Worker call per proxied cask.
+  Each run consumes one Worker call per proxied cask. It also errors when
+  the cask version differs from livecheck, so `ci.yml` goes red on every
+  PR (dependabot included) whenever upstream ships before the bump merges.
+  Same for the artifact's `LSMinimumSystemVersion` vs `depends_on macos:`:
+  a vendor raising its minimum fails the bump audit until the cask follows.
 - `bump.yml` discovers casks dynamically via `find scripts -name 'bump-*.rb' -printf '%f\n'`.
   Adding a cask = create `Casks/<name>.rb` + `scripts/bump-<name>.rb`; no
   workflow edit needed. **Don't use `ls glob` here** — shellcheck SC2012
@@ -233,11 +238,13 @@ session hook will object otherwise.
   irrelevant on a public repo.
 - Inline `brew style` + `brew audit --online` are the bot PR's pre-merge
   gate: `peter-evans/create-pull-request` uses the default
-  `${{ github.token }}` which means resulting PRs do NOT trigger
-  `on: pull_request` in `ci.yml`. Without the inline checks, a malformed
-  bumper rewrite would only be caught after merge by `ci.yml`'s
-  `on: push: branches: [main]` run. Don't switch to a PAT just for this —
-  inline validation has the same blast radius and no token to rotate.
+  `${{ github.token }}`, so GitHub parks the PR's `ci.yml` run as
+  `action_required` (maintainer approval) instead of running it; an
+  unapproved run expires as `failure` after 30 days. That red is noise.
+  Without the inline checks, a malformed bumper rewrite would only be
+  caught after merge by `ci.yml`'s `on: push: branches: [main]` run.
+  Don't switch to a PAT just for this — inline validation has the same
+  blast radius and no token to rotate.
 - Bot PRs from `bump.yml` get labels `bump,automation`. A preceding
   `gh label create … --force` step creates/updates them idempotently so
   the workflow doesn't depend on manual repo setup; this needs
@@ -287,7 +294,7 @@ Key implications:
 
 ## Action versions (current, all node24)
 
-`actions/checkout@v6`, `actions/setup-node@v6`, `ruby/setup-ruby@v1`,
+`actions/checkout@v7`, `actions/setup-node@v7`, `ruby/setup-ruby@v1`,
 `peter-evans/create-pull-request@v8`, `cloudflare/wrangler-action@v4`,
 `Homebrew/actions/setup-homebrew@main` (upstream never tags).
 
